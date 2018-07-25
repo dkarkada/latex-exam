@@ -1,0 +1,47 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+name: Exam
+file_extensions: [exam]
+scope: text.exam
+
+contexts:
+  main:
+    # Strings begin and end with quotes, and use backslashes as an escape
+    # character
+    - match: '^\['
+      push: tag
+
+    - match: '`'
+      push: math
+
+    # Comments begin with a '//' and finish at the end of the line
+    - match: '//'
+      push: line_comment
+
+    - match: '(?i){.*}'
+      scope: entity.name.exam
+
+    - match: '!(newpage|options|gap)'
+      scope: variable.function.exam
+
+  tag:
+    - meta_scope: tag.exam
+    - match: '(?i)section|cover'
+      scope: keyword.exam
+    - match: '(?i)title|subtitle|author|contact|info|instructions|mc|frq|match|img|text'
+      scope: string.exam
+    - match: ']'
+      pop: true
+
+  math:
+    - meta_scope: variable.parameter.exam
+    - match: '(?<!\\)`'
+      pop: true
+
+  line_comment:
+    - meta_scope: comment.line.exam
+    - match: '`'
+      push: math
+    - match: $
+      pop: true
