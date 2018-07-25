@@ -1,0 +1,21 @@
+#! /usr/bin/env bash
+
+echoerr() { echo "$@" 1>&2; }
+
+to_pdf='false'
+
+while getopts ':p' flag; do
+	case "${flag}" in
+		p) to_pdf='true' ; shift ;;
+		*) echoerr "Illegal option: -${OPTARG}"; echoerr "Quitting." ; exit ;;
+	esac
+done
+
+cwd=$(pwd)
+# Change directory to source
+cd $(dirname "$(readlink -f "$0")")
+python cplexam.py "$1"
+cd "$cwd"
+if [ $to_pdf = 'true' ]; then
+	latexmk -pdf "${1%.*}.tex"
+fi
