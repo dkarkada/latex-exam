@@ -2,9 +2,11 @@
 
 echoerr() { echo "$@" 1>&2; }
 
+# options
 to_pdf='false'
 cleanup=''
 
+#handle options
 while getopts ':pc' flag; do
 	case "${flag}" in
 		p) to_pdf='true' ; shift ;;
@@ -13,13 +15,27 @@ while getopts ':pc' flag; do
 	esac
 done
 
+# check for filename argument
+if [ "$1" = '' ]; then
+	echoerr "Expected argument filename not found."
+	exit
+fi
+
+# save current directory
 cwd=$(pwd)
-# Change directory to source
+# change directory to source
 cd $(dirname "$(readlink -f "$0")")
-python cplexam.py "$1"
-cd "$cwd"
+# generate tex
+if [[ "$1" = /* ]]; then
+	# absolute path
+	python cplexam.py "$1"
+else
+	# relative path
+	python cplexam.py "$cwd/$1"
+fi
+# compile pdf from tex
 if [ $to_pdf = 'true' ]; then
+	cd "$cwd"
 	latexmk -pdf -quiet $cleanup "${1%.*}.tex"
-	pwd
 	evince "${1%.*}.pdf"
 fi

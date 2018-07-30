@@ -5,10 +5,15 @@ class ExamModule:
 	def __init__(self, mod_type, content):
 		self.mod_type = mod_type;
 		self.content = content;
-	def get_content(self):
-		return self.content;
+
+class ExamSection:
+	def __init__(self, sec_type, content):
+		self.sec_type = sec_type;
+		self.content = content;
 	def get_type(self):
-		return self.type;
+		return self.sec_type;
+	def to_tex(self, cnt):
+		return "";
 
 class Exam:
 	def __init__(self):
@@ -17,24 +22,25 @@ class Exam:
 		self.hasCover = False;
 	def get_sections(self):
 		return self.sections;
-	def add_module(self, mod_type, mod_content):
-		if mod_type == "cover":
+	def add_section(self, sec_type, content):
+		if sec_type == "cover":
 			self.hasCover = True;
-		self.sections.append(ExamModule(mod_type, mod_content));
-	def verify_modules(self):
+		self.sections.append(ExamSection(sec_type, content));
+	def verify_sections(self):
+		sections = self.sections;
 		if len(sections) == 0:
 			return "Error: No sections found.";
 		s_count = cover_count = 0;
 		for section in sections:
-			if section.get_type() = "section":
+			if section.get_type() == "section":
 				s_count += 1;
-			elif section.get_type() = "cover":
+			elif section.get_type() == "cover":
 				cover_count += 1;
 		if len(sections) - (s_count+cover_count) != 0:
 			return "Internal error: Misidentified section."
 		if cover_count > 1:
 			return "Error: Only one cover allowed."
-		if cover_count==1 and sections[0].get_type!="cover":
+		if cover_count==1 and sections[0].get_type()!="cover":
 			return "Error: Cover must be first section."
 		return None;
 
@@ -49,23 +55,23 @@ def generate_tex_string(filename, labelled_template):
 		if ind >= len(lines):
 			print("Error: No sections found.");
 			return None;
-		mod_type = None;
-		mod_content = None;
+		sec_type = None;
+		sec_content = None;
 		while ind < len(lines):
 			line = lines[ind];
 			if re.match(header, lines[ind]):
-				if mod_type:
-					exam.add_module(mod_type, mod_content);
+				if sec_type:
+					exam.add_section(sec_type, sec_content);
 				splt = re.match(header, line).end();
-				mod_type = line[:splt].strip()[1:-1].lower();
-				mod_content = line[splt:];
+				sec_type = line[:splt].strip()[1:-1].lower();
+				sec_content = line[splt:];
 				ind += 1;
 			else:
-				mod_content += line;
+				sec_content += line;
 				ind += 1;
-		exam.add_module(mod_type, mod_content);
+		exam.add_section(sec_type, sec_content);
 
-	error = exam.verify_modules();
+	error = exam.verify_sections();
 	if error:
 		print(error);
 		return None;
