@@ -22,14 +22,14 @@ contexts:
     - match: '(?i){.*}'
       scope: entity.name.exam
 
-    - match: '!(newpage|options|gap|img)'
+    - match: '!(newpage|options|gap|img|contact)'
       scope: variable.function.exam
 
   tag:
     - meta_scope: tag.exam
     - match: '(?i)section|cover'
       scope: keyword.exam
-    - match: '(?i)title|subtitle|author|contact|studentid|info|instructions|mc|frq|match|text'
+    - match: '(?i)title|subtitle|author|header|info|instructions|mc|frq|match|text'
       scope: string.exam
     - match: ']'
       pop: true
