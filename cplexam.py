@@ -8,7 +8,10 @@ def compile_error(err):
 class ExamModule:
 	def __init__(self, mod_type, content):
 		self.mod_type = mod_type;
-		self.content = [line.strip() for line in content if not re.match(r"\s*$", line)];
+		content = [line.strip() for line in content if not re.match(r"\s*$", line)];
+		bang_pattern = r"\s*!(newpage|options|gap|img)";
+		self.bangs = [line for line in content if re.match(bang_pattern, line)];
+		self.content = [line for line in content if line not in self.bangs];
 	def get_type(self):
 		return self.mod_type;
 	def get_content(self):
@@ -19,7 +22,9 @@ class ExamModule:
 			content += line;
 		return content.strip();
 	def to_tex(self):
-		return "";
+		tex_str = "";
+		if self.mod_type == "Title":
+			print("A");
 
 class ExamSection:
 	def __init__(self, sec_type, content, num):
@@ -78,12 +83,43 @@ class ExamSection:
 		tex_str = "\\begin{coverpages}\n";
 		centered = False;
 		for mod in self.modules:
-			if mod.get_type() in ["title", "subtitle", "author", "info"] and not centered:
+			content = mod.get_content();
+			mt = mod.get_type();
+			if mt in ["title", "subtitle", "author", "info"] and not centered:
 				tex_str += "\t\\begin{center}\n";
-			elif mod.get_type() not in ["title", "subtitle", "author", "info"] and centered:
+				centered = True;
+			elif mt not in ["title", "subtitle", "author", "info"] and centered:
 				tex_str += "\t\\end{center}\n";
-			tex_str += "\t{}".format(mod.to_tex());
-		tex_str += "\\end{coverpages}";
+				centered = False;
+			if mt == "title":
+				tex_str += "\t\t\\textbf{{\\Huge  {}}}\\\\\n".format(content[0]); 
+			if mt == "subtitle":
+				tex_str += "\t\t\\textbf{{\\large {}}}\\\\\n".format(content[0]);
+			if mt == "author":
+				if len(content) == 2:
+					tex_str += "\t\t\\textbf{{Created by: {}}}, \\textit{{{}}}\\\\\n".format(
+						content[0], content[1]);
+				else:
+					tex_str += "\t\t\\textbf{{Created by: {}}}\\\\\n".format(mod.to_string());
+			if mt == "info":
+				if len(content) == 0:
+					compile_error("Empty Info module (cover).");
+				tex_str += "\t\t\\def\\arraystretch{2}\\tabcolsep=3pt\n\t\t\\begin{tabular}{l r}\n";
+				for line in content:
+					tex_str += "\t\t\t\\textbf{{{}:}} & \\makebox[4in]{{\\hrulefill}} \\\\\n"\
+									.format(line.strip());
+				tex_str += "\t\t\\end{tabular}\n";
+			if mt == "instructions":
+				if len(content) == 0:
+					compile_error("Empty Instructions module (cover).");
+				tex_str += "\t\\vspace{0.5 in}\n"
+				for line in content:
+					tex_str += "\t\\par {}\n".format(line.strip());
+				tex_str += "\t\\\\ \\vspace{0.5 in}\n"
+		if centered:
+			tex_str += "\t\\end{center}\n";
+			centered = False;
+		tex_str += "\\end{coverpages}\n";
 		return tex_str;
 	def section_to_tex(self):
 		return "";
@@ -165,9 +201,10 @@ def generate_tex_string(filename, labelled_template):
 	exam.verify_sections();
 
 	tex_str = exam.preamble(labelled_template);
-	print(tex_str);
 	for section in exam.get_sections():
 		tex_str += section.to_tex();
+	tex_str += "\\end{document}";
+	print(tex_str);
 
 	return tex_str;
 
@@ -194,9 +231,10 @@ def main():
 	# read template file
 	labelled_template = read_template();	
 	tex_str = generate_tex_string(filename, labelled_template)
-
-
-
+	# write to tex file
+	filename = filename[:re.search("\\.", filename).end()] + "tex";
+	with open(filename, 'w+') as fileout:
+		fileout.write(tex_str);
 
 if __name__ == "__main__":
 	main();
