@@ -36,7 +36,6 @@ fi
 # compile pdf from tex
 if [ $to_pdf = 'true' ]; then
 	cd "$(dirname "$1")"
-	echo -pdf -quiet "$cleanup" "${1%.*}.tex"
 	latexmk -pdf -quiet "${1%.*}.tex"
 	if [ $cleanup = 'true' ]; then
 		latexmk -c
