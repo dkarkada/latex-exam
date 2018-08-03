@@ -5,17 +5,53 @@ def compile_error(err):
 	print(err)
 	sys.exit(0)
 
+def handle_bang(line, context):
+	tex_str = ""
+	match_0 = re.search("{", line)
+	match_1 = re.search("}", line)
+	args = None
+	if match_0 and match_1 and match_0.end() < match_1.start():
+		args = line[match_0.end():match_1.start()]
+		args = args.split(",")
+		args = [arg.strip() for arg in args if arg.strip()!=""]
+	if re.match(r"\s*!img", line):
+		if not args:
+			compile_error("Expected args for img in cover.")
+		tex_str += "\t\t\\vspace{0.05 in}\n"
+		if len(args) == 1:
+			img_str = "\t\t\\includegraphics{{{}}}\n".format(args[0])
+		else:
+			img_str = "\t\t\\includegraphics[width={}]{{{}}}\n".format(args[1], args[0])
+		if (context is None) or ("centered" not in context) or (context["centered"]==False):
+			tex_str += "\t\\begin{center}\n"
+			tex_str += img_str;
+			tex_str += "\t\\end{center}\n"
+		else:
+			tex_str += "\t\t\\par\\noindent\n"
+			tex_str += "\t\t" + img_str;							
+		tex_str += "\t\t\\vspace{0.05 in}\n"
+	if re.match(r"\s*!newpage", line):
+		tex_str += "\t\t\\newpage\n"
+	if re.match(r"\s*!gap", line):
+		if args:
+			tex_str += "\t\t\\vspace{{{}}}\n".format(args[0])
+		else:
+			tex_str += "\t\t\\vspace{0.10 in}\n"
+	return tex_str
+
 class ExamModule:
 	def __init__(self, mod_type, content):
 		self.mod_type = mod_type
 		content = [line.strip() for line in content if not re.match(r"\s*$", line)]
 		bang_pattern = r"\s*!(newpage|options|gap|img)"
+		self.content = content
 		self.bangs = [line for line in content if re.match(bang_pattern, line)]
-		self.content = [line for line in content if line not in self.bangs]
 	def get_type(self):
 		return self.mod_type
 	def get_content(self):
 		return self.content
+	def get_bangs(self):
+		return self.bangs
 	def to_string(self):
 		content = ""
 		for line in self.content:
@@ -23,21 +59,29 @@ class ExamModule:
 		return content.strip()
 	def to_tex(self):
 		tex_str = ""
-		if self.mod_type == "title":
-			tex_str += "\\par\\noindent \\textbf{{\\large {}}}\n".format(self.content[0])
-		elif self.mod_type == "instructions":
-			for line in self.content:
-				tex_str += "\\par\\noindent {}".format(line)
-		elif self.mod_type == "mc":
-			tex_str += self.mc_tex()
-		elif self.mod_type == "frq":
-			tex_str += self.frq_tex()
-		elif self.mod_type == "match":
-			tex_str += self.match_tex()
-		elif self.mod_type == "text":
-			tex_str += self.text_tex()
-		else:
+		tex_generator = getattr(self, self.mod_type+"_tex", None)
+		if not tex_generator:
 			compile_error("Illegal module: {}", self.mod_type)
+		tex_str += tex_generator()
+		return tex_str
+	def title_tex(self):
+		content = self.content
+		bangs = self.bangs
+		tex_str = ""
+		for line in content:
+			if line not in bangs:
+				tex_str += "\\par\\noindent \\textbf{{\\large {}}}\n".format(self.content[0])
+			else:
+				tex_str += handle_bang(line, None)
+		return tex_str
+	def instructions_tex(self):
+		content = self.content
+		bangs = self.bangs
+		tex_str = ""
+		for line in self.content:
+			tex_str += "\\par\\noindent {}".format(line)
+		else:
+			tex_str += handle_bang(line, None)
 		return tex_str
 	def mc_tex(self):
 		return ""
@@ -68,7 +112,7 @@ class ExamSection:
 		mod_content = []
 		while ind < len(content):
 			line = content[ind]
-			if re.match(tag_pattern, content[ind]):
+			if re.match(tag_pattern, line):
 				if mod_type:
 					self.add_module(mod_type, mod_content)
 				splt = re.match(tag_pattern, line).end()
@@ -104,48 +148,52 @@ class ExamSection:
 		mod_names = [mod.get_type() for mod in self.modules]
 		tex_str = "\\begin{coverpages}\n"
 		centered = False
+		spacings = {"title": "0.10", "subtitle": "0.05", "author": "0.05",\
+					"info": "0.15", "instructions": "0.15", "header": "0.00"}
 		for mod in self.modules:
 			content = mod.get_content()
 			mt = mod.get_type()
+			bangs = mod.get_bangs()
+			if len(content) == 0:
+				compile_error("Empty module in Cover: {}".format(mt))
+			if mt not in spacings:
+				compile_error("Invalid module type in Cover: {}".format(mt))
+			spacing = spacings[mt]
 			if mt in ["title", "subtitle", "author", "info"] and not centered:
 				tex_str += "\t\\begin{center}\n"
 				centered = True
 			elif mt not in ["title", "subtitle", "author", "info"] and centered:
 				tex_str += "\t\\end{center}\n"
 				centered = False
-			if mt == "title":
-				tex_str += "\t\t\\vspace{0.10 in}\n"
-				tex_str += "\t\t\\par\\noindent\\textbf{{\\Huge  {}}}\n".format(content[0]) 
-				tex_str += "\t\t\\vspace{0.10 in}\n"
-			if mt == "subtitle":
-				tex_str += "\t\t\\vspace{0.05 in}\n"
-				tex_str += "\t\t\\par\\noindent\\textbf{{\\large {}}}\n".format(content[0])
-				tex_str += "\t\t\\vspace{0.05 in}\n"
-			if mt == "author":
-				tex_str += "\t\t\\vspace{0.05 in}\n"
-				if len(content) == 2:
-					tex_str += "\t\t\\par\\noindent\\textbf{{Written by: {}}}, \\textit{{{}}}\n".format(
-						content[0], content[1])
-				else:
-					tex_str += "\t\t\\textbf{{Written by: {}}}\n".format(mod.to_string())
-				tex_str += "\t\t\\vspace{0.05 in}\n"
+			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
 			if mt == "info":
-				if len(content) == 0:
-					compile_error("Empty Info module (cover).")
-				tex_str += "\t\t\\vspace{0.15 in}\n"
 				tex_str += "\t\t\\def\\arraystretch{2}\\tabcolsep=3pt\n\t\t\\begin{tabular}{l r}\n"
-				for line in content:
-					tex_str += "\t\t\t\\textbf{{{}:}} & \\makebox[4in]{{\\hrulefill}} \\\\\n"\
-									.format(line.strip())
-				tex_str += "\t\t\\end{tabular}\n"
-				tex_str += "\t\t\\vspace{0.15 in}\n"
-			if mt == "instructions":
-				if len(content) == 0:
-					compile_error("Empty Instructions module (cover).")
-				tex_str += "\t\\vspace{0.15 in}\n"
-				for line in content:
-					tex_str += "\t\\par {}\n".format(line.strip())
-				tex_str += "\t\\vspace{0.15 in}\n"
+			for line in content:
+				if line not in bangs:
+					if mt == "title":
+						tex_str += "\t\t\\par\\noindent\\textbf{{\\Huge  {}}}\n".format(line) 
+					if mt == "subtitle":
+						tex_str += "\t\t\\par\\noindent\\textbf{{\\large {}}}\n".format(line)
+					if mt == "author":
+						match = re.search(",", line)
+						if match:
+							splt = match.end()
+							author = line[:splt-1]
+							author_info = line[splt:]
+							tex_str += "\t\t\\par\\noindent\\textbf{{Written by: {}}}, \\textit{{{}}}\n".format(
+								author, author_info)
+						else:
+							tex_str += "\t\t\\textbf{{Written by: {}}}\n".format(content[0])
+					if mt == "info":
+						tex_str += "\t\t\t\\textbf{{{}:}} & \\makebox[4in]{{\\hrulefill}} \\\\\n".format(
+							line.strip())
+					if mt == "instructions":
+						tex_str += "\t\\par {}\n".format(line.strip())
+				else:
+					tex_str += handle_bang(line, {"centered": centered})
+			if mt == "info":
+				tex_str += "\t\t\\end{tabular}\n"					
+			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
 		if centered:
 			tex_str += "\t\\end{center}\n"
 			centered = False
@@ -218,10 +266,11 @@ def generate_tex_string(filename, labelled_template):
 		sec_content = []
 		while ind < len(lines):
 			line = lines[ind]
-			if re.match(tag_pattern, lines[ind]):
+			match = re.match(tag_pattern, line)
+			if match:
 				if sec_type:
 					exam.add_section(sec_type, sec_content)
-				splt = re.match(tag_pattern, line).end()
+				splt = match.end()
 				sec_type = line[:splt].strip()[1:-1].lower()
 				sec_content = [line[splt:]]
 				ind += 1
@@ -246,8 +295,9 @@ def read_template():
 		label = ""
 		for line in filein:
 			if not re.match(r"\s*$", line):
-				if re.match(r"\s*%", line):
-					splt = re.search("%", line).end()
+				match = re.match(r"\s*%", line)
+				if match:
+					splt = match.end()
 					label = line[splt:].strip()
 
 				elif label != "":
@@ -264,7 +314,10 @@ def main():
 	labelled_template = read_template()	
 	tex_str = generate_tex_string(filename, labelled_template)
 	# write to tex file
-	filename = filename[:re.search("\\.", filename).end()] + "tex"
+	match = re.search("\\.", filename)
+	if match:
+		filename = filename[:match.start()]
+	filename = filename + ".tex"
 	with open(filename, 'w+') as fileout:
 		fileout.write(tex_str)
 
