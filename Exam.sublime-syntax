@@ -12,7 +12,7 @@ contexts:
     - match: '^\['
       push: tag
 
-    - match: '`'
+    - match: '\$'
       push: math
 
     # Comments begin with a '//' and finish at the end of the line
@@ -22,7 +22,7 @@ contexts:
     - match: '(?i){.*}'
       scope: entity.name.exam
 
-    - match: '!(newpage|options|gap|img|contact)'
+    - match: '!(newpage|options|gap|img)'
       scope: variable.function.exam
 
   tag:
@@ -36,12 +36,12 @@ contexts:
 
   math:
     - meta_scope: variable.parameter.exam
-    - match: '(?<!\\)`'
+    - match: '(?<!\\)\$'
       pop: true
 
   line_comment:
     - meta_scope: comment.line.exam
-    - match: '`'
+    - match: '\$'
       push: math
     - match: $
       pop: true
