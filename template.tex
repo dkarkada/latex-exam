@@ -1,3 +1,4 @@
+% preamble
 \documentclass{exam}
 \usepackage[utf8]{inputenc}
 
@@ -6,21 +7,16 @@
 \usepackage{siunitx}
 \usepackage{graphicx}
 \graphicspath{{images/}}
-% more imports
+
+\newcommand{\hidepoints}{\pointsinmargin\pointformat{}}
+\newcommand{\showpoints}{\nopointsinmargin\pointformat{(\thepoints)}}
+
+% wordbank
 \usepackage{etoolbox}
 \usepackage{intcalc}
 \usepackage{framed}
 \usepackage{tabu}
 \usepackage{tabularx}
-
-\newcommand{\class}{}
-\newcommand{\examtitle}{}
-\newcommand{\examdate}{}
-\newcommand{\identifier}{}
-\newcommand{\hidepoints}{\pointsinmargin\pointformat{}}
-\newcommand{\showpoints}{\nopointsinmargin\pointformat{(\thepoints)}}
-
-% word bank setup
 \newcommand{\match}[2]{
 	\begin{tabularx}{\textwidth}{r X}
 		\fillin[#1][0.5 in] & #2
@@ -37,42 +33,6 @@
 	\begin{center} \begin{framed}
 	\begin{tabu} to \textwidth {*{#1}{X[1,l] X[5,l]}}
 	}
-	{\end{tabu} \end{framed} \end{center}}
-
+	{\end{tabu} \end{framed} \end{center}
+}
 \setlength\answerclearance{3 pt}
-% end word bank setup
-
-\pagestyle{head}
-\header{\class, \examdate}{\examtitle\ - Page \thepage}{\identifier:\kern .5 in}
-\headrule
-
-\begin{document}
-\begin{coverpages}
-    \begin{center}
-    	\textbf{\Huge \examtitle}\\
-    	\vspace{.1 in}
-    	\textbf{\large \class, \examdate}\\
-    	% contact
-    	\textbf{Contact: }, \textit{}\\
-    	% end contact
-    	% coverimage
-    	\vspace{.5 in}
-    	\includegraphics[width = \textwidth]{}\\
-    	\vspace{.5 in}
-    	% end coverimage
-    	% competitors
-    	\def\arraystretch{2}\tabcolsep=3 pt
-    	\begin{tabular}{l r}
-    		%insert
-    	\end{tabular}
-    	% end competitors
-    \end{center}
-    % cover instructions
-	\vspace{10 pt}
-		%insert
-	\vspace{5 pt}
-	% end cover instructions
-	\end{center}
-\end{coverpages}
-%content
-\end{document}
