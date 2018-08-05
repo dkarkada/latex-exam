@@ -191,6 +191,8 @@ class ExamModule:
 		tex_str = ""
 		for line in content:
 			if line not in bangs:
+				line = re.sub(r"\\i\s*{", r"\\textit{", line)
+				line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 				tex_str += "\t\\par {}\n".format(line)
 			else:
 				tex_str += handle_bang(line, context=None, options=[])				
