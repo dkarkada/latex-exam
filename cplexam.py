@@ -1,11 +1,12 @@
 import sys
 import re
+from random import shuffle
 
 def compile_error(err):
 	print(err)
 	sys.exit(0)
 
-def handle_bang(line, context):
+def handle_bang(line, context, options):
 	tex_str = ""
 	match_0 = re.search("{", line)
 	match_1 = re.search("}", line)
@@ -24,11 +25,11 @@ def handle_bang(line, context):
 			img_str = "\t\t\\includegraphics[width={}]{{{}}}\n".format(args[1], args[0])
 		if (context is None) or ("centered" not in context) or (context["centered"]==False):
 			tex_str += "\t\\begin{center}\n"
-			tex_str += img_str;
+			tex_str += img_str
 			tex_str += "\t\\end{center}\n"
 		else:
 			tex_str += "\t\t\\par\\noindent\n"
-			tex_str += "\t\t" + img_str;							
+			tex_str += "\t\t" + img_str							
 		tex_str += "\t\t\\vspace{0.05 in}\n"
 	if re.match(r"\s*!newpage", line):
 		tex_str += "\t\t\\newpage\n"
@@ -37,15 +38,36 @@ def handle_bang(line, context):
 			tex_str += "\t\t\\vspace{{{}}}\n".format(args[0])
 		else:
 			tex_str += "\t\t\\vspace{0.10 in}\n"
+	if re.match(r"\s*!options", line):
+		for arg in args:
+			options.append(arg)
 	return tex_str
-
+class MCQuestion:
+	def __init__(self, question, choices, correct_choice):
+		self.question = question
+		self.choices = choices
+		self.correct_choice = correct_choice
+	def to_tex(self):
+		tex_str = ""
+		if not self.correct_choice:
+			self.correct_choice = self.choices[0]
+			shuffle(self.choices)
+		tex_str += "\t\\question {}\n".format(self.question)
+		tex_str += "\t\\begin{choices}\n"
+		for choice in self.choices:
+			if choice == self.correct_choice:
+				tex_str += "\t\t\\CorrectChoice {}\n".format(choice)
+			else:
+				tex_str += "\t\t\\choice {}\n".format(choice)
+		tex_str += "\t\\end{choices}\n"
+		return tex_str
 class ExamModule:
 	def __init__(self, mod_type, content):
 		self.mod_type = mod_type
-		content = [line.strip() for line in content if not re.match(r"\s*$", line)]
+		self.content = [line.rstrip() for line in content if not re.match(r"\s*$", line)]
 		bang_pattern = r"\s*!(newpage|options|gap|img)"
-		self.content = content
-		self.bangs = [line for line in content if re.match(bang_pattern, line)]
+		self.bangs = [line for line in self.content if re.match(bang_pattern, line)]
+		self.options = []
 	def get_type(self):
 		return self.mod_type
 	def get_content(self):
@@ -72,25 +94,107 @@ class ExamModule:
 			if line not in bangs:
 				tex_str += "\\par\\noindent \\textbf{{\\large {}}}\n".format(self.content[0])
 			else:
-				tex_str += handle_bang(line, None)
+				tex_str += handle_bang(line, context=None, options=[])
 		return tex_str
 	def instructions_tex(self):
 		content = self.content
 		bangs = self.bangs
 		tex_str = ""
 		for line in self.content:
-			tex_str += "\\par\\noindent {}".format(line)
+			tex_str += "\\par\\noindent {}\n".format(line)
 		else:
-			tex_str += handle_bang(line, None)
+			tex_str += handle_bang(line, context=None, options=[])
 		return tex_str
 	def mc_tex(self):
-		return ""
+		content = self.content
+		bangs = self.bangs
+		options = self.options
+		questions = []
+		question = None
+		choices = []
+		correct_choice = None
+		bang_tex = []
+		for line in content:
+			if line not in bangs:
+				if not question:
+					question = line
+				elif re.match("\t+", line):
+					match = re.search("{C}", line)
+					if match:
+						line = line[:match.start()].strip()
+						correct_choice = line
+						choices.append(line)
+					else:
+						choices.append(line.strip())
+				else:
+					if len(choices) == 0:
+						compile_error("No answer choices found: {}", question)
+					questions.append(MCQuestion(question, choices, correct_choice))
+					if bang_tex:
+						questions.append("".join(bang_tex))
+					question = line
+					choices = []
+					correct_choice = None
+			else:
+				twocolumn = "twocolumn" in options
+				bang_tex.append(handle_bang(line, context={"twocolumn":twocolumn}, options=options))
+		questions.append(MCQuestion(question, choices, correct_choice))
+		tex_str = ""
+		tex_str += "\\begin{questions}\n"
+		for question in questions:
+			if type(question) == MCQuestion:
+				tex_str += question.to_tex()
+			else: # "question" is actually bang tex
+				tex_str += question
+		tex_str += "\\end{questions}\n"
+		return tex_str
 	def frq_tex(self):
-		return ""
+		tex_str = ""
+		return tex_str
 	def match_tex(self):
-		return ""
+		content = self.content
+		bangs = self.bangs
+		options = self.options
+		question_data = []
+		for line in content:
+			if line not in bangs:
+				if len(line.split("::")) != 2:
+					compile_error("Invalid syntax in match: {}", line)
+				line = line.split("::")
+				question_data.append(line)
+			else:
+				handle_bang(line, context=None, options=options)
+		if "noshuffle" not in options:
+			shuffle(question_data)
+		ans_list = sorted(list(set([line[0] for line in question_data])))
+		if len(ans_list) > 26:
+			compile_error("Too many choices in word bank.")
+		tex_str = ""
+		tex_str += "\\begin{wordbank}{3}\n"
+		for ans in ans_list:
+			tex_str += "\t\\wbelem{{{}}}\n".format(ans)
+		tex_str += "\\end{wordbank}\n"
+		tex_str += "\\begin{questions}\n"
+		if not "showpoints" in options:
+			tex_str += "\t\\hidepoints\n"
+		for line in question_data:
+			question, ans = line[1], line[0]
+			ans_letter = chr(65 + ans_list.index(ans))
+			tex_str += "\t\\question\\match{{{}}}{{{}}}\n".format(ans_letter, question)
+		if not "showpoints" in options:
+			tex_str += "\t\\showpoints\n"	
+		tex_str += "\\end{questions}\n"		
+		return tex_str
 	def text_tex(self):
-		return ""
+		content = self.content
+		bangs = self.bangs
+		tex_str = ""
+		for line in content:
+			if line not in bangs:
+				tex_str += "\t\\par {}\n".format(line)
+			else:
+				tex_str += handle_bang(line, context=None, options=[])				
+		return tex_str
 
 
 class ExamSection:
@@ -102,7 +206,7 @@ class ExamSection:
 		self.to_modules(content)
 	def get_type(self):
 		return self.sec_type
-	def to_modules(self,content):
+	def to_modules(self, content):
 		ind = 0
 		tag_pattern = r"(?i)\s*\[(title|subtitle|author|header|info|instructions|mc|frq|match|text)\]"
 		while ind<len(content) and not re.match(tag_pattern, content[ind]):
@@ -190,7 +294,7 @@ class ExamSection:
 					if mt == "instructions":
 						tex_str += "\t\\par {}\n".format(line.strip())
 				else:
-					tex_str += handle_bang(line, {"centered": centered})
+					tex_str += handle_bang(line, context={"centered": centered}, options=[])
 			if mt == "info":
 				tex_str += "\t\t\\end{tabular}\n"					
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
