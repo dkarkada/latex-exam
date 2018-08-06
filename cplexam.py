@@ -7,6 +7,15 @@ def compile_error(err):
 	print(err)
 	sys.exit(0)
 
+def make_latex_safe(line):
+	line = re.sub("%", "\\%", line)
+	match = re.search("\"[^\"]*\"", line)
+	while match:
+		repl = "``{}''".format(match.group(0)[1:-1])
+		line = line[:match.start()] + repl + line[match.end():]
+		match = re.match("\"[^\"]*\"", line)
+	return line
+
 def handle_bang(line, context, options):
 	tex_str = ""
 	match_0 = re.search("{", line)
@@ -47,6 +56,7 @@ def handle_bang(line, context, options):
 			else:
 				options[arg] = ''
 	return tex_str
+
 class MCQuestion:
 	def __init__(self, question, choices, correct_choice):
 		self.question = question
@@ -71,6 +81,7 @@ class MCQuestion:
 		for choice in self.choices:
 			height += 11*math.ceil(len(choice)/choicewidth)+5
 		return height
+
 class ExamModule:
 	def __init__(self, mod_type, content):
 		self.mod_type = mod_type
@@ -89,33 +100,36 @@ class ExamModule:
 		for line in self.content:
 			content += line
 		return content.strip()
-	def to_tex(self):
+	def to_tex(self, qcount):
 		tex_str = ""
 		tex_generator = getattr(self, self.mod_type+"_tex", None)
 		if not tex_generator:
 			compile_error("Illegal module: {}", self.mod_type)
-		tex_str += tex_generator()
+		tex_str += tex_generator(qcount)
 		return tex_str
-	def title_tex(self):
+	def title_tex(self, qcount):
 		content = self.content
 		bangs = self.bangs
 		tex_str = ""
 		for line in content:
-			if line not in bangs:
-				tex_str += "\\par\\noindent \\textbf{{\\large {}}}\n".format(self.content[0])
+			if line not in bangs:				
+				line = make_latex_safe(line)
+				tex_str += "\\par\\noindent \\textbf{{\\large {}}}\n".format(line)
 			else:
 				tex_str += handle_bang(line, context=None, options={})
 		return tex_str
-	def instructions_tex(self):
+	def instructions_tex(self, qcount):
 		content = self.content
 		bangs = self.bangs
 		tex_str = ""
 		for line in self.content:
-			tex_str += "\\par\\noindent {}\n".format(line)
-		else:
-			tex_str += handle_bang(line, context=None, options={})
+			if line not in bangs:
+				line = make_latex_safe(line)
+				tex_str += "\\par\\noindent {}\n".format(line)
+			else:
+				tex_str += handle_bang(line, context=None, options={})
 		return tex_str
-	def mc_tex(self):
+	def mc_tex(self, qcount):
 		content = self.content
 		bangs = self.bangs
 		options = self.options
@@ -126,6 +140,7 @@ class ExamModule:
 		bang_tex = []
 		for line in content:
 			if line not in bangs:
+				line = make_latex_safe(line)
 				if not question:
 					question = line
 				elif re.match("\t+", line):
@@ -159,6 +174,7 @@ class ExamModule:
 			tex_str += "\\renewcommand{\\choiceshook}{\\setlength{\\leftmargin}{0.40 in}}\n"
 			tex_str += "\\renewcommand{\\questionshook}{\\setlength{\\leftmargin}{0.0 in}}\n"
 		tex_str += "\\begin{questions}\n"
+		tex_str += "\\setcounter{{question}}{{{}}}\n".format(qcount[0])
 		cur_line = 0
 		col_num = 1
 		if "intro-height" in options:
@@ -180,6 +196,7 @@ class ExamModule:
 				else:
 					cur_line += qheight
 				tex_str += question.to_tex()
+				qcount[0] += 1
 			else: # "question" is actually bang tex
 				tex_str += question
 				if "!img" or "!gap" in question:
@@ -190,17 +207,88 @@ class ExamModule:
 						tex_str += "\t\\newpage\n"
 					col_num += 1
 		tex_str += "\\end{questions}\n"
+		if "twocolumn" in options:
+			tex_str += "\\end{multicols*}\n"
+			tex_str += "\\renewcommand{\\choiceshook}{}\n"
+			tex_str += "\\renewcommand{\\questionshook}{}\n"
 		return tex_str
-	def frq_tex(self):
-		tex_str = ""
+	def frq_tex(self, qcount):
+		content = self.content
+		bangs = self.bangs
+		options = self.options
+		prev_indent_count = indent_count = 0
+		tex_str = "\\begin{questions}\n"
+		tex_str += "\\setcounter{{question}}{{{}}}\n".format(qcount[0])
+		for line in content:
+			if line not in bangs:
+				line = make_latex_safe(line)
+				if not re.match(r"\s*//", line):
+					indent_count = len(line) - len(line.lstrip("\t"))
+					indent_change = indent_count - prev_indent_count
+					line = line.strip()
+					if indent_change == -2:
+						tex_str += "\t\t\\end{subparts}\n"
+						tex_str += "\t\\end{parts}\n"
+					elif indent_change == -1:
+						if indent_count == 0:
+							tex_str += "\t\\end{parts}\n"
+						else:
+							tex_str += "\t\t\\end{subparts}\n"
+					elif indent_change == 1:
+						if indent_count == 1:
+							tex_str += "\t\\begin{parts}\n"
+						elif indent_count == 2:
+							tex_str += "\t\t\\begin{subparts}\n"
+						else:
+							compile_error("Too many indents: " + line)
+					elif indent_change > 1:
+						compile_error("Too many indents: " + line)
+
+					match = re.match(r"{\s*\d+\s*}", line)
+					point_str = ""
+					if match:
+						point_str = "[{}]".format(match[1:-1])
+					if indent_count == 0:
+						tex_str += "\\question{} {}\n".format(point_str, line)
+						qcount[0] += 1
+					elif indent_count == 1:
+						tex_str += "\t\\part{} {}\n".format(point_str, line)
+					else:
+						tex_str += "\t\t\\subpart{} {}\n".format(point_str, line)
+					prev_indent_count = indent_count
+				else:
+					line = line.strip()[2:].strip()
+					match = re.match(r"{\s*\d+[^}]*}", line)
+					height_str = ""
+					if match:
+						height_str = line[match.start()+1:match.end()-1]
+						height_str = "[{}]".format(height_str)
+						line = line[match.end():]
+					if "var-spacing" in options and height_str=="":
+						height_str = "[{} pt]".format(20*math.ceil(len(line)/75))
+					tab_str = "\t"*(indent_count+1)
+					tex_str += "{}\\begin{{solution}}{}\n".format(tab_str, height_str)
+					tex_str += "{}{}\n".format(tab_str, line)
+					tex_str += tab_str + "\\end{solution}\n"
+			else:
+				tex_str += handle_bang(line, context=[], options=options)
+		indent_change = 0 - prev_indent_count
+		line = line.strip()
+		if indent_change == -2:
+			tex_str += "\t\t\\end{subparts}\n"
+			tex_str += "\t\\end{parts}\n"
+		elif indent_change == -1:
+			tex_str += "\t\\end{parts}\n"
+		tex_str += "\\end{questions}\n"
 		return tex_str
-	def match_tex(self):
+	def match_tex(self, qcount):
 		content = self.content
 		bangs = self.bangs
 		options = self.options
 		question_data = []
 		for line in content:
 			if line not in bangs:
+				line = make_latex_safe(line)
 				if len(line.split("::")) != 2:
 					compile_error("Invalid syntax in match: {}", line)
 				line = line.split("::")
@@ -218,22 +306,25 @@ class ExamModule:
 			tex_str += "\t\\wbelem{{{}}}\n".format(ans)
 		tex_str += "\\end{wordbank}\n"
 		tex_str += "\\begin{questions}\n"
+		tex_str += "\\setcounter{{question}}{{{}}}\n".format(qcount[0])
 		if not "showpoints" in options:
 			tex_str += "\t\\hidepoints\n"
 		for line in question_data:
 			question, ans = line[1], line[0]
 			ans_letter = chr(65 + ans_list.index(ans))
 			tex_str += "\t\\question\\match{{{}}}{{{}}}\n".format(ans_letter, question)
+			qcount[0] += 1
 		if not "showpoints" in options:
 			tex_str += "\t\\showpoints\n"	
 		tex_str += "\\end{questions}\n"		
 		return tex_str
-	def text_tex(self):
+	def text_tex(self, qcount):
 		content = self.content
 		bangs = self.bangs
 		tex_str = ""
 		for line in content:
 			if line not in bangs:
+				line = make_latex_safe(line)
 				line = re.sub(r"\\i\s*{", r"\\textit{", line)
 				line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 				tex_str += "\t\\par {}\n".format(line)
@@ -276,11 +367,11 @@ class ExamSection:
 		if mod_type == "match":
 			self.hasMatching = True
 		self.modules.append(ExamModule(mod_type, content))
-	def to_tex(self):
+	def to_tex(self, qcount):
 		if self.sec_type == "cover":
 			return self.cover_to_tex()
 		else:
-			return self.section_to_tex()
+			return self.section_to_tex(qcount)
 	def get_header_info(self):
 		assert self.sec_type == "cover", "Cannot get header info: not a cover."
 		header = None
@@ -319,6 +410,7 @@ class ExamSection:
 				tex_str += "\t\t\\def\\arraystretch{2}\\tabcolsep=3pt\n\t\t\\begin{tabular}{l r}\n"
 			for line in content:
 				if line not in bangs:
+					line = make_latex_safe(line)
 					if mt == "title":
 						tex_str += "\t\t\\par\\noindent\\textbf{{\\Huge  {}}}\n".format(line) 
 					if mt == "subtitle":
@@ -348,10 +440,10 @@ class ExamSection:
 			centered = False
 		tex_str += "\\end{coverpages}\n"
 		return tex_str
-	def section_to_tex(self):
+	def section_to_tex(self, qcount):
 		tex_str = "\n\\newpage\n"
 		for module in self.modules:
-			tex_str += module.to_tex()
+			tex_str += module.to_tex(qcount)
 		return tex_str
 
 class Exam:
@@ -359,6 +451,7 @@ class Exam:
 		self.sections = []
 		self.hasMatching = False
 		self.hasCover = False
+		self.question_counter = [0]
 	def get_sections(self):
 		return self.sections
 	def add_section(self, sec_type, content):
@@ -399,6 +492,12 @@ class Exam:
 				tex_str += "\n\\pagestyle{head}\n" + tex_header + "\\headrule\n"
 		tex_str += "\n\\begin{document}\n"
 		return tex_str
+	def to_tex(self, labelled_template):		
+		tex_str = self.preamble(labelled_template)
+		for section in self.get_sections():
+			tex_str += section.to_tex(self.question_counter)
+		tex_str += "\\end{document}"
+		return tex_str
 
 def generate_tex_string(filename, labelled_template):
 	exam = Exam()
@@ -429,14 +528,7 @@ def generate_tex_string(filename, labelled_template):
 		exam.add_section(sec_type, sec_content)
 
 	exam.verify_sections()
-
-	tex_str = exam.preamble(labelled_template)
-	for section in exam.get_sections():
-		tex_str += section.to_tex()
-	tex_str += "\\end{document}"
-	# print(tex_str)
-
-	return tex_str
+	return exam.to_tex(labelled_template)
 
 def read_template():
 	with open("template.tex", 'r') as filein:
