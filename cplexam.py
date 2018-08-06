@@ -1,5 +1,6 @@
 import sys
 import re
+import math
 from random import shuffle
 
 def compile_error(err):
@@ -40,7 +41,11 @@ def handle_bang(line, context, options):
 			tex_str += "\t\t\\vspace{0.10 in}\n"
 	if re.match(r"\s*!options", line):
 		for arg in args:
-			options.append(arg)
+			match = re.search("=", arg)
+			if match:
+				options[arg[:match.start()]] = arg[match.end():]
+			else:
+				options[arg] = ''
 	return tex_str
 class MCQuestion:
 	def __init__(self, question, choices, correct_choice):
@@ -61,13 +66,18 @@ class MCQuestion:
 				tex_str += "\t\t\\choice {}\n".format(choice)
 		tex_str += "\t\\end{choices}\n"
 		return tex_str
+	def calc_height(self, qwidth, choicewidth):
+		height = 11*math.ceil(len(self.question)/qwidth)+10
+		for choice in self.choices:
+			height += 11*math.ceil(len(choice)/choicewidth)+5
+		return height
 class ExamModule:
 	def __init__(self, mod_type, content):
 		self.mod_type = mod_type
 		self.content = [line.rstrip() for line in content if not re.match(r"\s*$", line)]
 		bang_pattern = r"\s*!(newpage|options|gap|img)"
 		self.bangs = [line for line in self.content if re.match(bang_pattern, line)]
-		self.options = []
+		self.options = {}
 	def get_type(self):
 		return self.mod_type
 	def get_content(self):
@@ -94,7 +104,7 @@ class ExamModule:
 			if line not in bangs:
 				tex_str += "\\par\\noindent \\textbf{{\\large {}}}\n".format(self.content[0])
 			else:
-				tex_str += handle_bang(line, context=None, options=[])
+				tex_str += handle_bang(line, context=None, options={})
 		return tex_str
 	def instructions_tex(self):
 		content = self.content
@@ -103,7 +113,7 @@ class ExamModule:
 		for line in self.content:
 			tex_str += "\\par\\noindent {}\n".format(line)
 		else:
-			tex_str += handle_bang(line, context=None, options=[])
+			tex_str += handle_bang(line, context=None, options={})
 		return tex_str
 	def mc_tex(self):
 		content = self.content
@@ -132,20 +142,53 @@ class ExamModule:
 					questions.append(MCQuestion(question, choices, correct_choice))
 					if bang_tex:
 						questions.append("".join(bang_tex))
+						bang_tex = []
 					question = line
 					choices = []
 					correct_choice = None
 			else:
 				twocolumn = "twocolumn" in options
-				bang_tex.append(handle_bang(line, context={"twocolumn":twocolumn}, options=options))
+				bang_line = handle_bang(line, context={"twocolumn":twocolumn}, options=options)
+				if bang_line != "":
+					bang_tex.append(bang_line)
 		questions.append(MCQuestion(question, choices, correct_choice))
 		tex_str = ""
+		if "twocolumn" in options:
+			tex_str += "\\setlength{\\columnsep}{0.40 in}\n"
+			tex_str += "\\begin{multicols*}{2}\n"
+			tex_str += "\\renewcommand{\\choiceshook}{\\setlength{\\leftmargin}{0.40 in}}\n"
+			tex_str += "\\renewcommand{\\questionshook}{\\setlength{\\leftmargin}{0.0 in}}\n"
 		tex_str += "\\begin{questions}\n"
+		cur_line = 0
+		col_num = 1
+		if "intro-height" in options:
+			page_height_pt = 672 - int(options["intro-height"])
+		else:
+			page_height_pt = 500
 		for question in questions:
 			if type(question) == MCQuestion:
+				qwidth, choicewidth = (50, 43) if "twocolumn" in options else (100, 80)
+				qheight = question.calc_height(qwidth, choicewidth)
+				page_height_pt = 672 if col_num>2 else page_height_pt
+				if cur_line + qheight > page_height_pt:
+					cur_line = qheight
+					if "twocolumn" in options:
+						tex_str += "\t\\vfill\\null\\columnbreak\n"
+					else:
+						tex_str += "\t\\newpage\n"
+					col_num += 1
+				else:
+					cur_line += qheight
 				tex_str += question.to_tex()
 			else: # "question" is actually bang tex
 				tex_str += question
+				if "!img" or "!gap" in question:
+					cur_line = 0
+					if "twocolumn" in options:
+						tex_str += "\t\\vfill\\null\\columnbreak\n"
+					else:
+						tex_str += "\t\\newpage\n"
+					col_num += 1
 		tex_str += "\\end{questions}\n"
 		return tex_str
 	def frq_tex(self):
@@ -195,7 +238,7 @@ class ExamModule:
 				line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 				tex_str += "\t\\par {}\n".format(line)
 			else:
-				tex_str += handle_bang(line, context=None, options=[])				
+				tex_str += handle_bang(line, context=None, options={})				
 		return tex_str
 
 
@@ -296,7 +339,7 @@ class ExamSection:
 					if mt == "instructions":
 						tex_str += "\t\\par {}\n".format(line.strip())
 				else:
-					tex_str += handle_bang(line, context={"centered": centered}, options=[])
+					tex_str += handle_bang(line, context={"centered": centered}, options={})
 			if mt == "info":
 				tex_str += "\t\t\\end{tabular}\n"					
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
