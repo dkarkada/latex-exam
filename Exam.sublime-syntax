@@ -43,5 +43,7 @@ contexts:
     - meta_scope: comment.line.exam
     - match: '\$'
       push: math
+    - match: '(?i){\d+}'
+      scope: entity.name.exam
     - match: $
       pop: true
