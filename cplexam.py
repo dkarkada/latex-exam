@@ -247,7 +247,9 @@ class ExamModule:
 					match = re.match(r"{\s*\d+\s*}", line)
 					point_str = ""
 					if match:
-						point_str = "[{}]".format(match[1:-1])
+						point_str = match.group(0)[1:-1]
+						point_str = "[{}]".format(point_str)
+						line = line[match.end():]
 					if indent_count == 0:
 						tex_str += "\\question{} {}\n".format(point_str, line)
 						qcount[0] += 1
