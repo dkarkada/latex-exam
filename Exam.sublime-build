@@ -1,0 +1,5 @@
+{
+	"cmd": ["cplexam", "-c", "$file"],
+	"selector": "text.exam",
+	"file_patterns": ["*.exam"]
+}
