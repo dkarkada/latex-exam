@@ -61,12 +61,13 @@ class MCQuestion:
 	def __init__(self, question, choices, correct_choice):
 		self.question = question
 		self.choices = choices
-		self.correct_choice = correct_choice
-	def to_tex(self):
-		tex_str = ""
-		if not self.correct_choice:
+		if not correct_choice:
 			self.correct_choice = self.choices[0]
 			shuffle(self.choices)
+		else:
+			self.correct_choice = correct_choice
+	def to_tex(self):
+		tex_str = ""		
 		tex_str += "\t\\question {}\n".format(self.question)
 		tex_str += "\t\\begin{choices}\n"
 		for choice in self.choices:
@@ -81,6 +82,9 @@ class MCQuestion:
 		for choice in self.choices:
 			height += 11*math.ceil(len(choice)/choicewidth)+5
 		return height
+	def get_answer(self):
+		ind = self.choices.index(self.correct_choice)
+		return chr(65 + ind)
 
 class ExamModule:
 	def __init__(self, mod_type, content):
@@ -89,6 +93,7 @@ class ExamModule:
 		bang_pattern = r"\s*!(newpage|options|gap|img)"
 		self.bangs = [line for line in self.content if re.match(bang_pattern, line)]
 		self.options = {}
+		self.ans_tex = ""
 	def get_type(self):
 		return self.mod_type
 	def get_content(self):
@@ -134,15 +139,17 @@ class ExamModule:
 		bangs = self.bangs
 		options = self.options
 		questions = []
-		question = None
+		solutions = []
+		question_str = None
 		choices = []
 		correct_choice = None
 		bang_tex = []
+		initial_qcount = qcount[0]+1
 		for line in content:
 			if line not in bangs:
 				line = make_latex_safe(line)
-				if not question:
-					question = line
+				if not question_str:
+					question_str = line
 				elif re.match("\t+", line):
 					match = re.search("{C}", line)
 					if match:
@@ -153,12 +160,13 @@ class ExamModule:
 						choices.append(line.strip())
 				else:
 					if len(choices) == 0:
-						compile_error("No answer choices found: {}", question)
-					questions.append(MCQuestion(question, choices, correct_choice))
+						compile_error("No answer choices found: {}", question_str)
+					questions.append(MCQuestion(question_str, choices, correct_choice))
+					solutions.append(questions[-1].get_answer())
 					if bang_tex:
 						questions.append("".join(bang_tex))
 						bang_tex = []
-					question = line
+					question_str = line
 					choices = []
 					correct_choice = None
 			else:
@@ -166,7 +174,8 @@ class ExamModule:
 				bang_line = handle_bang(line, context={"twocolumn":twocolumn}, options=options)
 				if bang_line != "":
 					bang_tex.append(bang_line)
-		questions.append(MCQuestion(question, choices, correct_choice))
+		questions.append(MCQuestion(question_str, choices, correct_choice))
+		solutions.append(questions[-1].get_answer())
 		tex_str = ""
 		if "twocolumn" in options:
 			tex_str += "\\setlength{\\columnsep}{0.40 in}\n"
@@ -187,12 +196,12 @@ class ExamModule:
 				qheight = question.calc_height(qwidth, choicewidth)
 				page_height_pt = 672 if col_num>2 else page_height_pt
 				if cur_line + qheight > page_height_pt:
-					cur_line = qheight
 					if "twocolumn" in options:
 						tex_str += "\t\\vfill\\null\\columnbreak\n"
 					else:
 						tex_str += "\t\\newpage\n"
 					col_num += 1
+					cur_line = qheight
 				else:
 					cur_line += qheight
 				tex_str += question.to_tex()
@@ -211,11 +220,18 @@ class ExamModule:
 			tex_str += "\\end{multicols*}\n"
 			tex_str += "\\renewcommand{\\choiceshook}{}\n"
 			tex_str += "\\renewcommand{\\questionshook}{}\n"
+		if "ans" in options and options["ans"]=="sheet":
+			self.ans_tex = self.gen_ans(initial_qcount, solutions)
+		else:
+			self.ans_tex = tex_str
 		return tex_str
 	def frq_tex(self, qcount):
 		content = self.content
 		bangs = self.bangs
 		options = self.options
+		# we actually want to start at qcount+1, but since prev=count=0, we naturally increment on first pass
+		hierarchy_counter = qcount[0]
+		solutions = []
 		prev_indent_count = indent_count = 0
 		tex_str = "\\begin{questions}\n"
 		tex_str += "\\setcounter{{question}}{{{}}}\n".format(qcount[0])
@@ -229,19 +245,26 @@ class ExamModule:
 					if indent_change == -2:
 						tex_str += "\t\t\\end{subparts}\n"
 						tex_str += "\t\\end{parts}\n"
+						hierarchy_counter = math.floor(hierarchy_counter+1)
 					elif indent_change == -1:
 						if indent_count == 0:
 							tex_str += "\t\\end{parts}\n"
+							hierarchy_counter = math.floor(hierarchy_counter+1)
 						else:
 							tex_str += "\t\t\\end{subparts}\n"
+							hierarchy_counter = math.floor(hierarchy_counter*100+1) / 100
+					elif indent_change == 0:
+						hierarchy_counter += 10**(-2*(indent_count))
 					elif indent_change == 1:
 						if indent_count == 1:
 							tex_str += "\t\\begin{parts}\n"
+							hierarchy_counter += 0.01
 						elif indent_count == 2:
 							tex_str += "\t\t\\begin{subparts}\n"
+							hierarchy_counter += 0.0001
 						else:
 							compile_error("Too many indents: " + line)
-					elif indent_change > 1:
+					else:
 						compile_error("Too many indents: " + line)
 
 					match = re.match(r"{\s*\d+\s*}", line)
@@ -261,16 +284,17 @@ class ExamModule:
 				else:
 					line = line.strip()[2:].strip()
 					match = re.match(r"{\s*\d+[^}]*}", line)
-					height_str = ""
 					if match:
 						height_str = line[match.start()+1:match.end()-1]
 						height_str = "[{}]".format(height_str)
 						line = line[match.end():]
-					if "var-spacing" in options and height_str=="":
+					else:
 						height_str = "[{} pt]".format(20*math.ceil(len(line)/75))
 					tab_str = "\t"*(indent_count+1)
-					tex_str += "{}\\begin{{solution}}{}\n".format(tab_str, height_str)
+					tex_str += "{}\\begin{{solution}}{}\n".format(tab_str,
+						height_str if "ans" not in options or options["ans"]=="here" else "")
 					tex_str += "{}{}\n".format(tab_str, line)
+					solutions.append((round(hierarchy_counter, 4), line))
 					tex_str += tab_str + "\\end{solution}\n"
 			else:
 				tex_str += handle_bang(line, context=[], options=options)
@@ -282,12 +306,18 @@ class ExamModule:
 		elif indent_change == -1:
 			tex_str += "\t\\end{parts}\n"
 		tex_str += "\\end{questions}\n"
+		if "ans" in options and options["ans"]=="sheet":
+			self.ans_tex = self.gen_ans(None, solutions)
+		else:
+			self.ans_tex = tex_str 
 		return tex_str
 	def match_tex(self, qcount):
 		content = self.content
 		bangs = self.bangs
 		options = self.options
 		question_data = []
+		solutions = []
+		initial_qcount = qcount[0]+1
 		for line in content:
 			if line not in bangs:
 				line = make_latex_safe(line)
@@ -314,11 +344,16 @@ class ExamModule:
 		for line in question_data:
 			question, ans = line[1], line[0]
 			ans_letter = chr(65 + ans_list.index(ans))
+			solutions.append(ans_letter)
 			tex_str += "\t\\question\\match{{{}}}{{{}}}\n".format(ans_letter, question)
 			qcount[0] += 1
 		if not "showpoints" in options:
 			tex_str += "\t\\showpoints\n"	
-		tex_str += "\\end{questions}\n"		
+		tex_str += "\\end{questions}\n"
+		if "ans" in options and options["ans"]=="sheet":
+			self.ans_tex = self.gen_ans(initial_qcount, solutions)
+		else:
+			self.ans_tex = tex_str 
 		return tex_str
 	def text_tex(self, qcount):
 		content = self.content
@@ -333,7 +368,8 @@ class ExamModule:
 			else:
 				tex_str += handle_bang(line, context=None, options={})				
 		return tex_str
-
+	def gen_ans(self, initial_qcount, solutions):
+		print("AAE")
 
 class ExamSection:
 	def __init__(self, sec_type, content):
