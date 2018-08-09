@@ -15,7 +15,10 @@ contexts:
     - match: '//'
       push: line_comment
 
-    - match: '(?i){.*}'
+    - match: '{[^}]*}$'
+      scope: entity.name.exam
+
+    - match: '\s*{\d+}'
       scope: entity.name.exam
 
     - match: '!(newpage|options|gap|img)'

@@ -38,6 +38,7 @@
 \setlength\answerclearance{3 pt}
 
 % answerkey
+\usepackage{xcolor}
 \newcommand{\choiceblank}[1]{
 	\ifprintanswers \underline{\ \ #1\ \ }
 	\else \underline{\hspace{0.40 in}}
@@ -45,5 +46,6 @@
 	\vspace{0.05 in}
 }
 \newcommand{\fixcolspacing}{\vspace{0pt plus 1filll}\mbox{}}
-\unframedsolutions
 \renewcommand{\solutiontitle}{}
+\unframedsolutions
+\SolutionEmphasis{\color{violet}}
