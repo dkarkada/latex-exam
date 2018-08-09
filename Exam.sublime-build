@@ -1,5 +1,5 @@
 {
-	"cmd": ["cplexam", "-c", "$file"],
+	"cmd": ["examtex", "-c", "$file"],
 	"selector": "text.exam",
 	"file_patterns": ["*.exam"]
 }
