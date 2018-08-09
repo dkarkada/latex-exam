@@ -8,7 +8,7 @@ def compile_error(err):
 	sys.exit(0)
 
 def make_latex_safe(line):
-	line = re.sub("%", "\\%", line)
+	line = line.replace("%", "\\%")
 	match = re.search("\"[^\"]*\"", line)
 	while match:
 		repl = "``{}''".format(match.group(0)[1:-1])
@@ -237,10 +237,10 @@ class ExamModule:
 			tex_str += "\\renewcommand{\\questionshook}{}\n"
 
 		# generate answers
-		if "ans" in options and options["ans"]=="sheet":
+		if self.has_ans_sheet():
 			self.ans_str = self.gen_ans(initial_qcount, solutions)
 		else:
-			self.ans_str = "\\newpage\n" + tex_str
+			self.ans_str = tex_str
 		return tex_str
 	def frq_tex(self, qcount):
 		content = self.content
@@ -299,10 +299,10 @@ class ExamModule:
 					prev_indent_count = indent_count
 				else:
 					line = line.strip()[2:].strip()
-					match = re.match(r"{\s*\d+[^}]*}", line)
+					match = re.match(r"{\s*\d+\s*}", line)
 					if match:
-						height_str = line[match.start()+1:match.end()-1]
-						height_str = "[{}]".format(height_str)
+						height = int(line[match.start()+1:match.end()-1])*20
+						height_str = "[{} pt]".format(height)
 						line = line[match.end():]
 					else:
 						height_str = "[{} pt]".format(20*math.ceil(len(line)/75))
@@ -324,10 +324,10 @@ class ExamModule:
 		tex_str += "\\end{questions}\n"
 
 		# generate answers
-		if "ans" in options and options["ans"]=="sheet":
+		if self.has_ans_sheet():
 			self.ans_str = self.gen_ans(None, solutions)
 		else:
-			self.ans_str = "\\newpage\n" + tex_str 
+			self.ans_str = tex_str.replace("!newpage", "")
 		return tex_str
 	def match_tex(self, qcount):
 		content = self.content
@@ -368,10 +368,10 @@ class ExamModule:
 		tex_str += "\\end{questions}\n"
 
 		# generate answers
-		if self.has_ans_sheet:
+		if self.has_ans_sheet():
 			self.ans_str = self.gen_ans(initial_qcount, solutions)
 		else:
-			self.ans_str = "\\newpage\n" + tex_str 
+			self.ans_str = tex_str 
 		return tex_str
 	def text_tex(self, qcount):
 		content = self.content
@@ -546,11 +546,14 @@ class ExamSection:
 		for module in self.modules:
 			if module.mod_type == "title":
 				title_tex = module.title_tex(qcount=None)
-			if ans_key or module.has_ans_sheet():
-				if untitled:
-					untitled = False
-					ans_str += title_tex
-				ans_str += module.ans_str
+			elif module.mod_type in ["match", "frq", "mc"]:
+				if ans_key or module.has_ans_sheet():
+					if untitled:
+						if not module.has_ans_sheet():
+							ans_str += "\\newpage\n"
+						untitled = False
+						ans_str += title_tex
+					ans_str += module.ans_str
 		return ans_str
 
 class Exam:
