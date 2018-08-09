@@ -1,0 +1,138 @@
+\documentclass{exam}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{multicol}
+\newcommand{\hidepoints}{\pointsinmargin\pointformat{}}
+\newcommand{\showpoints}{\nopointsinmargin\pointformat{(\thepoints)}}
+
+\usepackage{xcolor}
+\newcommand{\choiceblank}[1]{
+	\ifprintanswers \underline{\ \ #1\ \ }
+	\else \underline{\hspace{0.40 in}}
+	\fi
+	\vspace{0.05 in}
+}
+\newcommand{\fixcolspacing}{\vspace{0pt plus 1filll}\mbox{}}
+\renewcommand{\solutiontitle}{}
+\unframedsolutions
+\SolutionEmphasis{\color{violet}}
+\printanswers
+
+\begin{document}
+\par\noindent \textbf{\large  Part I: Matching}
+	\raggedcolumns
+	\begin{multicols}{5}
+	\begin{enumerate}
+	\setcounter{enumi}{0}
+	\item \choiceblank{G}
+	\item \choiceblank{J}
+	\item \choiceblank{B}
+	\item \choiceblank{K}
+	\item \choiceblank{C}
+	\item \choiceblank{F}
+	\item \choiceblank{I}
+	\item \choiceblank{G}
+	\item \choiceblank{D}
+	\item \choiceblank{E}
+	\item \choiceblank{H}
+	\item \choiceblank{A}
+	\end{enumerate}
+	\fixcolspacing
+	\end{multicols}
+\par\noindent \textbf{\large  Part II: Multiple Choice}
+	\raggedcolumns
+	\begin{multicols}{5}
+	\begin{enumerate}
+	\setcounter{enumi}{12}
+	\item \choiceblank{B}
+	\item \choiceblank{B}
+	\item \choiceblank{A}
+	\item \choiceblank{C}
+	\item \choiceblank{B}
+	\item \choiceblank{B}
+	\item \choiceblank{C}
+	\item \choiceblank{A}
+	\end{enumerate}
+	\fixcolspacing
+	\end{multicols}
+\newpage
+\par\noindent \textbf{\large  Part III: Free Response}
+\begin{questions}
+\setcounter{question}{20}
+\question A question can have parts and subparts
+	\begin{parts}
+	\part Here is a part
+		\begin{solution}[20 pt]
+		Here is its solution
+		\end{solution}
+	\part Here is another part
+		\begin{subparts}
+		\subpart Its first subpart
+			\begin{solution}[20 pt]
+			and respective solution
+			\end{solution}
+		\subpart Next subpart
+			\begin{solution}[20 pt]
+			and respective solution
+			\end{solution}
+		\end{subparts}
+	\part Last part
+		\begin{solution}[20 pt]
+		solution
+		\end{solution}
+	\end{parts}
+\question You can put math here: $y=mx+b$ or alternatively \[i\hbar \frac{\partial \Psi}{\partial t} = -\frac{\hbar^2}{2m}\frac{\partial^2 \Psi}{\partial x^2} + V \Psi\] if you like this better.
+	\begin{solution}[20 pt]
+	solution can have $math$ as well
+	\end{solution}
+\question Quotation ``marks'' and \% symbols are preserved
+	\begin{solution}[20 pt]
+	solution
+	\end{solution}
+\question[3]  Indicate point values by preceding questions with curly bracketed numbers
+	\begin{parts}
+	\part question1
+		\begin{solution}[20 pt]
+		 And the number of lines the solution will take up
+		\end{solution}
+	\part question2
+		\begin{solution}[100 pt]
+		If solution size is not explicitly given, it'll try to guess based on the solution you've written. If you write a really long solution, then it will try to allocate more space for the student to match. But sometimes you want to write a long, detailed solution even though the expected solution may not be as long, so it's better to specify the expected number of lines.
+		\end{solution}
+	\end{parts}
+\question You can also directly put some \LaTeX\ commands in here
+	\begin{solution}[20 pt]
+	and they \textit{should} work
+	\end{solution}
+		\newpage
+\end{questions}
+\begin{questions}
+\setcounter{question}{25}
+\question Back to some sweet
+	\begin{parts}
+	\part free
+		\begin{solution}[20 pt]
+		free
+		\end{solution}
+	\part response
+		\begin{solution}[20 pt]
+		response
+		\end{solution}
+	\part questions!
+		\begin{solution}[20 pt]
+		questions
+		\end{solution}
+	\end{parts}
+\question By default, no answer sheet is generated at the end of the exam. You must use the ans option to specify if you want an answer sheet for a given question module
+	\begin{solution}[20 pt]
+	ok
+	\end{solution}
+\question But of course, every question module shows up in the answer key
+	\begin{solution}[20 pt]
+	of course
+	\end{solution}
+\end{questions}
+\end{document}
