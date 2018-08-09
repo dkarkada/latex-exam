@@ -28,17 +28,18 @@ cd "$(dirname "$(readlink -f "$0")")"
 # generate tex
 if [[ "$1" = /* ]]; then
 	# absolute path
-	python3 cplexam.py "$1"
+	python3 examtex.py "$1"
 else
 	# relative path
-	python3 cplexam.py "$cwd/$1"
+	python3 examtex.py "$cwd/$1"
 fi
 # compile pdf from tex
 if [ $to_pdf = 'true' ]; then
 	cd "$(dirname "$1")"
-	latexmk -pdf -quiet "${1%.*}.tex"
+	latexmk -pdf -quiet "${1%.*}-EXAM.tex"
+	latexmk -pdf -quiet "${1%.*}-KEY.tex"
 	if [ $cleanup = 'true' ]; then
 		latexmk -c
 	fi
-	evince "${1%.*}.pdf"
+	evince "${1%.*}-EXAM.pdf"
 fi
