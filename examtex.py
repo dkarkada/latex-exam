@@ -16,18 +16,22 @@ def make_latex_safe(line):
 		match = re.match("\"[^\"]*\"", line)
 	return line
 
-def handle_bang(line, context, options):
-	tex_str = ""
+def bang_args(line):
 	match_0 = re.search("{", line)
 	match_1 = re.search("}", line)
-	args = None
 	if match_0 and match_1 and match_0.end() < match_1.start():
 		args = line[match_0.end():match_1.start()]
 		args = args.split(",")
 		args = [arg.strip() for arg in args if arg.strip()!=""]
+		return args
+	return None
+
+def bang_to_tex(line, context):
+	args = bang_args(line)	
+	tex_str = ""
 	if re.match(r"\s*!img", line):
 		if not args:
-			compile_error("Expected args for img in cover.")
+			compile_error("Expected args for img.")
 		tex_str += "\t\t\\vspace{0.05 in}\n"
 		if len(args) == 1:
 			img_str = "\t\t\\includegraphics{{{}}}\n".format(args[0])
@@ -48,14 +52,19 @@ def handle_bang(line, context, options):
 			tex_str += "\t\t\\vspace{{{}}}\n".format(args[0])
 		else:
 			tex_str += "\t\t\\vspace{0.10 in}\n"
-	if re.match(r"\s*!options", line):
+	return tex_str
+
+def update_options(line, options):
+	args = bang_args(line)
+	if re.match(r"\s*!options", line):		
+		if not args:
+			compile_error("Expected args for options.")
 		for arg in args:
 			match = re.search("=", arg)
 			if match:
 				options[arg[:match.start()]] = arg[match.end():]
 			else:
 				options[arg] = ''
-	return tex_str
 
 class MCQuestion:
 	def __init__(self, question, choices, correct_choice):
@@ -92,8 +101,10 @@ class ExamModule:
 		self.content = [line.rstrip() for line in content if not re.match(r"\s*$", line)]
 		bang_pattern = r"\s*!(newpage|options|gap|img)"
 		self.bangs = [line for line in self.content if re.match(bang_pattern, line)]
-		self.options = {}
-		self.ans_tex = ""
+		self.options = {}	
+		for line in self.bangs:
+			update_options(line, options=self.options)
+		self.ans_str = ""
 	def get_type(self):
 		return self.mod_type
 	def get_content(self):
@@ -121,7 +132,7 @@ class ExamModule:
 				line = make_latex_safe(line)
 				tex_str += "\\par\\noindent \\textbf{{\\large {}}}\n".format(line)
 			else:
-				tex_str += handle_bang(line, context=None, options={})
+				tex_str += bang_to_tex(line, context=None)
 		return tex_str
 	def instructions_tex(self, qcount):
 		content = self.content
@@ -132,19 +143,21 @@ class ExamModule:
 				line = make_latex_safe(line)
 				tex_str += "\\par\\noindent {}\n".format(line)
 			else:
-				tex_str += handle_bang(line, context=None, options={})
+				tex_str += bang_to_tex(line, context=None)
 		return tex_str
 	def mc_tex(self, qcount):
 		content = self.content
 		bangs = self.bangs
 		options = self.options
+		initial_qcount = qcount[0]
 		questions = []
 		solutions = []
+		bang_tex = []
+		
+		# generate questions and solutions
 		question_str = None
 		choices = []
 		correct_choice = None
-		bang_tex = []
-		initial_qcount = qcount[0]+1
 		for line in content:
 			if line not in bangs:
 				line = make_latex_safe(line)
@@ -171,11 +184,13 @@ class ExamModule:
 					correct_choice = None
 			else:
 				twocolumn = "twocolumn" in options
-				bang_line = handle_bang(line, context={"twocolumn":twocolumn}, options=options)
+				bang_line = bang_to_tex(line, context={"twocolumn":twocolumn})
 				if bang_line != "":
 					bang_tex.append(bang_line)
 		questions.append(MCQuestion(question_str, choices, correct_choice))
 		solutions.append(questions[-1].get_answer())
+
+		# generate tex
 		tex_str = ""
 		if "twocolumn" in options:
 			tex_str += "\\setlength{\\columnsep}{0.40 in}\n"
@@ -220,17 +235,18 @@ class ExamModule:
 			tex_str += "\\end{multicols*}\n"
 			tex_str += "\\renewcommand{\\choiceshook}{}\n"
 			tex_str += "\\renewcommand{\\questionshook}{}\n"
+
+		# generate answers
 		if "ans" in options and options["ans"]=="sheet":
-			self.ans_tex = self.gen_ans(initial_qcount, solutions)
+			self.ans_str = self.gen_ans(initial_qcount, solutions)
 		else:
-			self.ans_tex = tex_str
+			self.ans_str = "\\newpage\n" + tex_str
 		return tex_str
 	def frq_tex(self, qcount):
 		content = self.content
 		bangs = self.bangs
 		options = self.options
-		# we actually want to start at qcount+1, but since prev=count=0, we naturally increment on first pass
-		hierarchy_counter = qcount[0]
+		hierarchy = [qcount[0], 0, 0]
 		solutions = []
 		prev_indent_count = indent_count = 0
 		tex_str = "\\begin{questions}\n"
@@ -245,23 +261,23 @@ class ExamModule:
 					if indent_change == -2:
 						tex_str += "\t\t\\end{subparts}\n"
 						tex_str += "\t\\end{parts}\n"
-						hierarchy_counter = math.floor(hierarchy_counter+1)
+						hierarchy = [hierarchy[0]+1, 0, 0]
 					elif indent_change == -1:
 						if indent_count == 0:
 							tex_str += "\t\\end{parts}\n"
-							hierarchy_counter = math.floor(hierarchy_counter+1)
+							hierarchy = [hierarchy[0]+1, 0, 0]
 						else:
 							tex_str += "\t\t\\end{subparts}\n"
-							hierarchy_counter = math.floor(hierarchy_counter*100+1) / 100
+							hierarchy = [hierarchy[0], hierarchy[1]+1, 0]
 					elif indent_change == 0:
-						hierarchy_counter += 10**(-2*(indent_count))
+						hierarchy[indent_count] += 1
 					elif indent_change == 1:
 						if indent_count == 1:
 							tex_str += "\t\\begin{parts}\n"
-							hierarchy_counter += 0.01
+							hierarchy[1] += 1
 						elif indent_count == 2:
 							tex_str += "\t\t\\begin{subparts}\n"
-							hierarchy_counter += 0.0001
+							hierarchy[2] += 1
 						else:
 							compile_error("Too many indents: " + line)
 					else:
@@ -294,10 +310,10 @@ class ExamModule:
 					tex_str += "{}\\begin{{solution}}{}\n".format(tab_str,
 						height_str if "ans" not in options or options["ans"]=="here" else "")
 					tex_str += "{}{}\n".format(tab_str, line)
-					solutions.append((round(hierarchy_counter, 4), line))
+					solutions.append((hierarchy.copy(), height_str, line))
 					tex_str += tab_str + "\\end{solution}\n"
 			else:
-				tex_str += handle_bang(line, context=[], options=options)
+				tex_str += bang_to_tex(line, context=[])
 		indent_change = 0 - prev_indent_count
 		line = line.strip()
 		if indent_change == -2:
@@ -306,10 +322,12 @@ class ExamModule:
 		elif indent_change == -1:
 			tex_str += "\t\\end{parts}\n"
 		tex_str += "\\end{questions}\n"
+
+		# generate answers
 		if "ans" in options and options["ans"]=="sheet":
-			self.ans_tex = self.gen_ans(None, solutions)
+			self.ans_str = self.gen_ans(None, solutions)
 		else:
-			self.ans_tex = tex_str 
+			self.ans_str = "\\newpage\n" + tex_str 
 		return tex_str
 	def match_tex(self, qcount):
 		content = self.content
@@ -317,7 +335,7 @@ class ExamModule:
 		options = self.options
 		question_data = []
 		solutions = []
-		initial_qcount = qcount[0]+1
+		initial_qcount = qcount[0]
 		for line in content:
 			if line not in bangs:
 				line = make_latex_safe(line)
@@ -325,8 +343,6 @@ class ExamModule:
 					compile_error("Invalid syntax in match: {}", line)
 				line = line.split("::")
 				question_data.append(line)
-			else:
-				handle_bang(line, context=None, options=options)
 		if "noshuffle" not in options:
 			shuffle(question_data)
 		ans_list = sorted(list(set([line[0] for line in question_data])))
@@ -350,10 +366,12 @@ class ExamModule:
 		if not "showpoints" in options:
 			tex_str += "\t\\showpoints\n"	
 		tex_str += "\\end{questions}\n"
-		if "ans" in options and options["ans"]=="sheet":
-			self.ans_tex = self.gen_ans(initial_qcount, solutions)
+
+		# generate answers
+		if self.has_ans_sheet:
+			self.ans_str = self.gen_ans(initial_qcount, solutions)
 		else:
-			self.ans_tex = tex_str 
+			self.ans_str = "\\newpage\n" + tex_str 
 		return tex_str
 	def text_tex(self, qcount):
 		content = self.content
@@ -366,16 +384,54 @@ class ExamModule:
 				line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 				tex_str += "\t\\par {}\n".format(line)
 			else:
-				tex_str += handle_bang(line, context=None, options={})				
+				tex_str += bang_to_tex(line, context=None)				
 		return tex_str
+	def has_ans_sheet(self):
+		return "ans" in self.options and self.options["ans"]=="sheet"
 	def gen_ans(self, initial_qcount, solutions):
-		print("AAE")
+		ans_str = ""
+		if self.mod_type in ["match", "mc"]:
+			ans_str += "\t\\raggedcolumns\n"
+			ans_str += "\t\\begin{multicols}{5}\n"
+			ans_str += "\t\\begin{enumerate}\n"
+			ans_str += "\t\\setcounter{{enumi}}{{{}}}\n".format(initial_qcount)
+			for sol in solutions:
+				ans_str += "\t\\item \\choiceblank{{{}}}\n".format(sol)
+			ans_str += "\t\\end{enumerate}\n"
+			if len(solutions) % 5 != 0:
+				ans_str += "\t\\fixcolspacing\n"
+			ans_str += "\t\\end{multicols}\n"
+		elif self.mod_type == "frq":
+			for (hierarchy, height_str, sol) in solutions:
+				qnum = "{}.".format(hierarchy[0])
+				qpart = chr(hierarchy[1]+96)+"." if hierarchy[1]!=0 else ""
+				qsubpart = ""
+				# convert to roman
+				if hierarchy[2]!=0:
+					romans = [('x',  10), ('ix', 9), ('v',  5), ('iv', 4), ('i',  1)]
+					subpart_num = hierarchy[2]
+					for numeral, integer in romans:
+						while subpart_num >= integer:
+							qsubpart += numeral
+							subpart_num -= integer
+					qsubpart += "."
+				qnum += qpart + qsubpart
+				ans_str += "\t\\\\[5 pt]\n"
+				ans_str += "\t\\begin{minipage}{\\linewidth}\n"
+				ans_str += "\t\t\\par\\noindent {}\n".format(qnum)
+				ans_str += "\t\t\\begin{{solution}}{}\n".format(height_str)
+				ans_str += "\t\t\t{}\n".format(sol)
+				ans_str += "\t\t\\end{solution}\n"
+				ans_str += "\t\t\\par\\noindent\\hrulefill\n"
+				ans_str += "\t\\end{minipage}\n"
+			ans_str += "\t\\\\[10 pt]\n"
+		return ans_str
 
 class ExamSection:
 	def __init__(self, sec_type, content):
 		self.sec_type = sec_type
 		self.content = []
-		self.hasMatching = False
+		self.has_matching = False
 		self.modules = []
 		self.to_modules(content)
 	def get_type(self):
@@ -403,7 +459,7 @@ class ExamSection:
 		self.add_module(mod_type, mod_content)
 	def add_module(self, mod_type, content):
 		if mod_type == "match":
-			self.hasMatching = True
+			self.has_matching = True
 		self.modules.append(ExamModule(mod_type, content))
 	def to_tex(self, qcount):
 		if self.sec_type == "cover":
@@ -469,7 +525,7 @@ class ExamSection:
 					if mt == "instructions":
 						tex_str += "\t\\par {}\n".format(line.strip())
 				else:
-					tex_str += handle_bang(line, context={"centered": centered}, options={})
+					tex_str += bang_to_tex(line, context={"centered": centered})
 			if mt == "info":
 				tex_str += "\t\t\\end{tabular}\n"					
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
@@ -483,20 +539,31 @@ class ExamSection:
 		for module in self.modules:
 			tex_str += module.to_tex(qcount)
 		return tex_str
+	def ans_tex(self, ans_key):
+		ans_str = ""
+		title_tex = ""
+		untitled = True
+		for module in self.modules:
+			if module.mod_type == "title":
+				title_tex = module.title_tex(qcount=None)
+			if ans_key or module.has_ans_sheet():
+				if untitled:
+					untitled = False
+					ans_str += title_tex
+				ans_str += module.ans_str
+		return ans_str
 
 class Exam:
 	def __init__(self):
 		self.sections = []
-		self.hasMatching = False
-		self.hasCover = False
+		self.has_matching = False
+		self.has_cover = False
 		self.question_counter = [0]
-	def get_sections(self):
-		return self.sections
 	def add_section(self, sec_type, content):
 		if sec_type == "cover":
-			self.hasCover = True
+			self.has_cover = True
 		self.sections.append(ExamSection(sec_type, content))
-		self.hasMatching = self.hasMatching or self.sections[-1].hasMatching
+		self.has_matching = self.has_matching or self.sections[-1].has_matching
 	def verify_sections(self):
 		sections = self.sections
 		if len(sections) == 0:
@@ -513,11 +580,12 @@ class Exam:
 		if cover_count==1 and sections[0].get_type()!="cover":
 			compile_error("Cover must be first section.")
 		return None
-	def preamble(self, template):
+	def exam_preamble(self, template):
 		tex_str = template["preamble"] + "\n"
-		if self.hasMatching:
+		tex_str += template["answerkey"] + "\n"
+		if self.has_matching:
 			tex_str += template["wordbank"] + "\n"
-		if self.hasCover:
+		if self.has_cover:
 			cover = self.sections[0]
 			header_elems = cover.get_header_info()
 			header_elems = [item if not re.match("//", item) else "" for item in header_elems]
@@ -530,12 +598,28 @@ class Exam:
 				tex_str += "\n\\pagestyle{head}\n" + tex_header + "\\headrule\n"
 		tex_str += "\n\\begin{document}\n"
 		return tex_str
+	def ans_preamble(self, template):
+		tex_str = template["preamble"] + "\n"
+		tex_str += template["answerkey"] + "\n"
+		tex_str += "\\printanswers" + "\n"
+		tex_str += "\n\\begin{document}\n"
+		return tex_str
 	def to_tex(self, labelled_template):		
-		tex_str = self.preamble(labelled_template)
-		for section in self.get_sections():
+		tex_str = self.exam_preamble(labelled_template)
+		for section in self.sections:
 			tex_str += section.to_tex(self.question_counter)
+		tex_str += "\\newpage\n"
+		tex_str += "\\section*{Answer Sheet}\n"
+		for section in self.sections:
+			tex_str += section.ans_tex(False)
 		tex_str += "\\end{document}"
 		return tex_str
+	def ans_tex(self, labelled_template):
+		ans_str = self.ans_preamble(labelled_template)
+		for section in self.sections:
+			ans_str += section.ans_tex(True)
+		ans_str += "\\end{document}"
+		return ans_str
 
 def generate_tex_string(filename, labelled_template):
 	exam = Exam()
@@ -566,7 +650,7 @@ def generate_tex_string(filename, labelled_template):
 		exam.add_section(sec_type, sec_content)
 
 	exam.verify_sections()
-	return exam.to_tex(labelled_template)
+	return exam.to_tex(labelled_template), exam.ans_tex(labelled_template)
 
 def read_template():
 	with open("template.tex", 'r') as filein:
@@ -591,14 +675,15 @@ def main():
 	filename = sys.argv[1]
 	# read template file
 	labelled_template = read_template()	
-	tex_str = generate_tex_string(filename, labelled_template)
+	tex_str, ans_str = generate_tex_string(filename, labelled_template)
 	# write to tex file
 	match = re.search("\\.", filename)
 	if match:
 		filename = filename[:match.start()]
-	filename = filename + ".tex"
-	with open(filename, 'w+') as fileout:
+	with open(filename+"-EXAM.tex", 'w+') as fileout:
 		fileout.write(tex_str)
+	with open(filename+"-KEY.tex", 'w+') as fileout:
+		fileout.write(ans_str)
 
 if __name__ == "__main__":
 	main()
