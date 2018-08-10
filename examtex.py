@@ -431,7 +431,6 @@ class ExamSection:
 	def __init__(self, sec_type, content):
 		self.sec_type = sec_type
 		self.content = []
-		self.has_matching = False
 		self.modules = []
 		self.to_modules(content)
 	def get_type(self):
@@ -448,7 +447,7 @@ class ExamSection:
 			line = content[ind]
 			if re.match(tag_pattern, line):
 				if mod_type:
-					self.add_module(mod_type, mod_content)
+					self.modules.append(ExamModule(mod_type, mod_content))
 				splt = re.match(tag_pattern, line).end()
 				mod_type = line[:splt].strip()[1:-1].lower()
 				mod_content = [line[splt:]]
@@ -456,28 +455,12 @@ class ExamSection:
 			else:
 				mod_content.append(line)
 				ind += 1
-		self.add_module(mod_type, mod_content)
-	def add_module(self, mod_type, content):
-		if mod_type == "match":
-			self.has_matching = True
-		self.modules.append(ExamModule(mod_type, content))
+		self.modules.append(ExamModule(mod_type, mod_content))
 	def to_tex(self, qcount):
 		if self.sec_type == "cover":
 			return self.cover_to_tex()
 		else:
 			return self.section_to_tex(qcount)
-	def get_header_info(self):
-		assert self.sec_type == "cover", "Cannot get header info: not a cover."
-		header = None
-		for module in self.modules:
-			if module.mod_type == "header":
-				header = module
-		if not header:
-			return ["", "", ""]
-		content = header.content
-		if len(content) != 3:
-			compile_error("Header must have 3 elements.")
-		return content
 	def cover_to_tex(self):
 		mod_names = [mod.get_type() for mod in self.modules]
 		tex_str = "\\begin{coverpages}\n"
@@ -540,8 +523,14 @@ class ExamSection:
 			tex_str += module.to_tex(qcount)
 		return tex_str
 	def ans_tex(self, ans_key):
+		"""
+		Returns tex for the answer key or answer sheet.
+
+		ans_key (bool): True if we're generating the answer key (as opposed to sheet).
+		"""
 		ans_str = ""
 		title_tex = ""
+		# prevent duplicate titles in a separated question set
 		untitled = True
 		for module in self.modules:
 			if module.mod_type == "title":
@@ -549,6 +538,7 @@ class ExamSection:
 			elif module.mod_type in ["match", "frq", "mc"]:
 				if ans_key or module.has_ans_sheet():
 					if untitled:
+						# newpage if copying section straight from exam
 						if not module.has_ans_sheet():
 							ans_str += "\\newpage\n"
 						untitled = False
@@ -559,82 +549,119 @@ class ExamSection:
 class Exam:
 	def __init__(self):
 		self.sections = []
-		self.has_matching = False
-		self.has_cover = False
+		# is in list so that updates elsewhere will stick around (pass by reference hack)
 		self.question_counter = [0]
-	def add_section(self, sec_type, content):
-		if sec_type == "cover":
-			self.has_cover = True
-		self.sections.append(ExamSection(sec_type, content))
-		self.has_matching = self.has_matching or self.sections[-1].has_matching
+		self.template = self.read_template()
+	def read_template():
+		"""
+		Returns a dict which labels the tex snippets.
+
+		Reads template.tex, contains tex snippets for use in the preamble.
+		"""
+		with open("template.tex", 'r') as filein:
+			labels = {}
+			label = ""
+			for line in filein:
+				if not re.match(r"\s*$", line):
+					match = re.match(r"\s*%", line)
+					if match:
+						splt = match.end()
+						label = line[splt:].strip()
+					elif label != "":
+						if label in labels:
+							labels[label] += line
+						else:
+							labels[label] = line
+		return labels
 	def verify_sections(self):
+		"""Make sure nothing is wonky about the exam"""
 		sections = self.sections
 		if len(sections) == 0:
 			compile_error("No sections found.")
-		s_count = cover_count = 0
+		s_count = cover_count = header_count = 0
 		for section in sections:
 			if section.get_type() == "section":
 				s_count += 1
 			elif section.get_type() == "cover":
 				cover_count += 1
-		assert len(sections) == s_count+cover_count, "Misidentified section."
+			elif section.get_type() == "header":
+				header_count += 1
+		assert len(sections) == s_count + cover_count + header_count, "Misidentified section."
 		if cover_count > 1:
 			compile_error("Only one cover allowed.")
-		if cover_count==1 and sections[0].get_type()!="cover":
-			compile_error("Cover must be first section.")
-		return None
-	def exam_preamble(self, template):
-		tex_str = template["preamble"] + "\n"
-		tex_str += template["answerkey"] + "\n"
-		if self.has_matching:
-			tex_str += template["wordbank"] + "\n"
-		if self.has_cover:
-			cover = self.sections[0]
-			header_elems = cover.get_header_info()
-			header_elems = [item if not re.match("//", item) else "" for item in header_elems]
-			if not (header_elems[0] == header_elems[1] == header_elems[2] == ""):
-				e0 = header_elems[0] if header_elems[0]!="" else ""
-				e1 = header_elems[1] + " - Page \\thepage" if header_elems[1]!="" else ""
-				e2 = header_elems[2] + ":\\kern .5 in" if header_elems[2]!="" else ""
-				tex_header = "\\header{{{}}}{{{}}}{{{}}}\n"\
-									.format(e0, e1, e2)
-				tex_str += "\n\\pagestyle{head}\n" + tex_header + "\\headrule\n"
-		tex_str += "\n\\begin{document}\n"
+		if header_count > 1:
+			compile_error("Only one header allowed.")	
+	def get_header_info(self):
+		"""Returns a 3-element list of header items, if a header is defined."""
+		header = None
+		for section in self.section:
+			if section.sec_type == "header":
+				header = section
+		if not header:
+			return None
+		content = header.content
+		if len(content) != 3:
+			compile_error("Header must have 3 elements.")
+		# Commented lines are filler for empty header item
+		return [item if not re.match(r"\s*//", item) else "" for item in content]
+	def exam_preamble(self):
+		"""Returns tex for exam preamble."""
+		tex_str = self.template["preamble"] + "\n"
+		tex_str += self.template["answerkey"] + "\n"
+		header_elems = self.get_header_info()
+		if header_elems:
+			e0 = header_elems[0] if header_elems[0]!="" else ""
+			e1 = header_elems[1] + " - Page \\thepage" if header_elems[1]!="" else ""
+			e2 = header_elems[2] + ":\\kern .5 in" if header_elems[2]!="" else ""
+			tex_header = "\\header{{{}}}{{{}}}{{{}}}\n".format(e0, e1, e2)
+			tex_str += "\n\\pagestyle{head}\n" + tex_header + "\\headrule\n"
 		return tex_str
-	def ans_preamble(self, template):
-		tex_str = template["preamble"] + "\n"
-		tex_str += template["answerkey"] + "\n"
-		tex_str += "\\printanswers" + "\n"
+	def to_tex(self):
+		"""Returns exam tex."""	
+		tex_str = self.exam_preamble()
 		tex_str += "\n\\begin{document}\n"
-		return tex_str
-	def to_tex(self, labelled_template):		
-		tex_str = self.exam_preamble(labelled_template)
+		# generate question tex
 		for section in self.sections:
 			tex_str += section.to_tex(self.question_counter)
-		tex_str += "\\newpage\n"
-		tex_str += "\\section*{Answer Sheet}\n"
+		# generate answer sheet
+		ans_sheet = ""
 		for section in self.sections:
-			tex_str += section.ans_tex(False)
+			ans_sheet += section.ans_tex(False)
+		if ans_sheet != "":
+			tex_str += "\\newpage\n"
+			tex_str += "\\section*{Answer Sheet}\n"
+			tex_str += ans_sheet
 		tex_str += "\\end{document}"
 		return tex_str
-	def ans_tex(self, labelled_template):
-		ans_str = self.ans_preamble(labelled_template)
+	def ans_tex(self):
+		"""Returns answer key tex."""
+		ans_str = self.template["preamble"] + "\n"
+		ans_str += self.template["answerkey"] + "\n"
+		ans_str += "\\printanswers" + "\n"
+		ans_str += "\n\\begin{document}\n"
 		for section in self.sections:
 			ans_str += section.ans_tex(True)
 		ans_str += "\\end{document}"
 		return ans_str
 
-def generate_tex_string(filename, labelled_template):
+def generate_tex(filename):
+	"""
+	Returns a tuple containing tex for the exam and answer key.
+	
+	filename (str): filename of .exam file
+	"""
 	exam = Exam()
 	with open(filename, 'r') as filein:
 		lines = filein.readlines()
 		ind = 0
+		# any lines above the first section are comments and are ignored
 		tag_pattern = r"(?i)\s*\[(cover|section)\]"
 		while ind<len(lines) and not re.match(tag_pattern, lines[ind]):
 			ind += 1
 		if ind >= len(lines):
 			compile_error("No sections found.")
 			return None
+		# putting together exam
 		sec_type = None
 		sec_content = []
 		while ind < len(lines):
@@ -642,44 +669,28 @@ def generate_tex_string(filename, labelled_template):
 			match = re.match(tag_pattern, line)
 			if match:
 				if sec_type:
-					exam.add_section(sec_type, sec_content)
+					exam.sections.append(ExamSection(sec_type, sec_content))
 				splt = match.end()
 				sec_type = line[:splt].strip()[1:-1].lower()
 				sec_content = [line[splt:]]
 				ind += 1
-			else:
+			else: # should only be bangs
 				sec_content.append(line)
 				ind += 1
-		exam.add_section(sec_type, sec_content)
-
+		# since last section still needs to be added
+		exam.sections.append(ExamSection(sec_type, sec_content))
+	# make sure everything is set up correctly
 	exam.verify_sections()
-	return exam.to_tex(labelled_template), exam.ans_tex(labelled_template)
 
-def read_template():
-	with open("template.tex", 'r') as filein:
-		labels = {}
-		label = ""
-		for line in filein:
-			if not re.match(r"\s*$", line):
-				match = re.match(r"\s*%", line)
-				if match:
-					splt = match.end()
-					label = line[splt:].strip()
-
-				elif label != "":
-					if label in labels:
-						labels[label] += line
-					else:
-						labels[label] = line
-	return labels
+	return exam.to_tex(), exam.ans_tex()
 
 def main():
 	# existence of argument is checked in bash script
 	filename = sys.argv[1]
 	# read template file
 	labelled_template = read_template()	
-	tex_str, ans_str = generate_tex_string(filename, labelled_template)
-	# write to tex file
+	tex_str, ans_str = generate_tex(filename, labelled_template)
+	# write to tex files
 	match = re.search("\\.", filename)
 	if match:
 		filename = filename[:match.start()]
