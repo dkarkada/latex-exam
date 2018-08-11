@@ -30,7 +30,7 @@ contexts:
     - match: '(?i)section|cover|header'
       scope: keyword.exam
 
-    - match: '(?i)title|subtitle|author|info|instructions|mc|frq|match|text'
+    - match: '(?i)title|subtitle|author|info|instructions|match|mc|frq|text|latex'
       scope: string.exam
 
     - match: ']'

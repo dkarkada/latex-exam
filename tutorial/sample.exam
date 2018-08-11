@@ -44,10 +44,9 @@ Answers:: which are used more than once will only appear once in the wordbox
 
 [Section]
 [Title] Part II: Multiple Choice
-[Instructions] 2 points each.
 [MC]
-!options {intro-height=30, twocolumn, ans=sheet}
-New sections autmatically
+!options {intro-height=30, twocolumn, ans=sheet, qworth=2}
+New sections automatically
 	Create a pagebreak
 	z
 	z
@@ -58,13 +57,13 @@ Multiple choice questions
 	z
 Unless you mark the correct answer
 	with this symbol at the end: {C}
-	1
-	2
-	3
-Then the answer choice order for that question
-	will
-	be
-	preserved {C}
+	Then the answer choice order
+	will be
+	preserved
+For shuffled questions, put the 
+	correct answer choice first,
+	followed by the bogus answers
+	z
 The spacing of MC questions depends
 	on the available space on the page
 	which depends on how much instructions you wrote. {C}
@@ -83,6 +82,9 @@ The option "twocolumn" does what you think it does
 	z
 	z
 	z
+The qworth option for MC and matching modules will print the pre-determined point-value
+	for all questions. {C}
+	To print point values for FRQ, see next section
 
 [Section]
 [Title] Part III: Free Response
@@ -116,8 +118,16 @@ You can also directly put some \LaTeX\ commands in here
 !newpage
 [Text]
 \noindent\textbf{sss}
-\noindent Lorem ipsum blah blah
-\par\noindent Here is some introductory text and stuff
+\par\noindent Lorem ipsum blah blah
+
+[Latex]
+\\ [.2 in]
+\par\noindent If you want to insert your own \LaTeX\ for whatever reason, you can do it here.
+\par
+\begin{itemize}
+	\item item 1
+	\item item 2
+\end{itemize}
 
 [FRQ]
 Back to some sweet

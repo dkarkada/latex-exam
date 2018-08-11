@@ -5,8 +5,6 @@
 \usepackage{siunitx}
 \usepackage{graphicx}
 \usepackage{multicol}
-\newcommand{\hidepoints}{\pointsinmargin\pointformat{}}
-\newcommand{\showpoints}{\nopointsinmargin\pointformat{(\thepoints)}}
 \usepackage{etoolbox}
 \usepackage{intcalc}
 \usepackage{framed}
@@ -44,8 +42,8 @@
 \unframedsolutions
 \SolutionEmphasis{\color{violet}}
 
-		\usepackage{physics}
-		\usepackage{hyperref}
+\usepackage{physics}
+\usepackage{hyperref}
 
 \pagestyle{head}
 \header{Class}{Exam title - Page \thepage}{Student ID:\kern .5 in}
@@ -105,63 +103,60 @@
 \end{wordbank}
 \begin{questions}
 \setcounter{question}{0}
-	\hidepoints
-	\question\match{A}{ This is question 1}
-	\question\match{H}{ No dedicated answer sheet will be created}
-	\question\match{K}{ You include 'noshuffle' as an option}
-	\question\match{C}{ This is question 3}
-	\question\match{F}{ This is question 6}
-	\question\match{B}{ This is question 2}
-	\question\match{J}{ ans=sheet will create a separate answer sheet at the end}
-	\question\match{E}{ This is question 5}
-	\question\match{G}{ which are used more than once will only appear once in the wordbox}
-	\question\match{G}{ are sorted alphabetically, while}
-	\question\match{I}{ Will automatically shuffle}
-	\question\match{D}{ This is question 4}
-	\showpoints
+	\question\match{H}{No dedicated answer sheet will be created}
+	\question\match{G}{which are used more than once will only appear once in the wordbox}
+	\question\match{J}{ans=sheet will create a separate answer sheet at the end}
+	\question\match{G}{are sorted alphabetically, while}
+	\question\match{C}{This is question 3}
+	\question\match{A}{This is question 1}
+	\question\match{B}{This is question 2}
+	\question\match{D}{This is question 4}
+	\question\match{K}{You include 'noshuffle' as an option}
+	\question\match{E}{This is question 5}
+	\question\match{F}{This is question 6}
+	\question\match{I}{Will automatically shuffle}
 \end{questions}
 
 \newpage
 \par\noindent \textbf{\large  Part II: Multiple Choice}
-\par\noindent  2 points each.
 \setlength{\columnsep}{0.40 in}
 \begin{multicols*}{2}
 \renewcommand{\choiceshook}{\setlength{\leftmargin}{0.40 in}}
 \renewcommand{\questionshook}{\setlength{\leftmargin}{0.0 in}}
 \begin{questions}
 \setcounter{question}{12}
-	\question New sections autmatically
+	\question[2] New sections automatically
 	\begin{choices}
 		\CorrectChoice Create a pagebreak
 		\choice z
 		\choice z
 	\end{choices}
-	\question Multiple choice questions
+	\question[2] Multiple choice questions
 	\begin{choices}
-		\choice z
 		\choice z
 		\CorrectChoice automatically have answers shuffled
 		\choice z
+		\choice z
 	\end{choices}
-	\question Unless you mark the correct answer
+	\question[2] Unless you mark the correct answer
 	\begin{choices}
 		\CorrectChoice with this symbol at the end:
-		\choice 1
-		\choice 2
-		\choice 3
+		\choice Then the answer choice order
+		\choice will be
+		\choice preserved
 	\end{choices}
-	\question Then the answer choice order for that question
+	\question[2] For shuffled questions, put the
 	\begin{choices}
-		\choice will
-		\choice be
-		\CorrectChoice preserved
+		\CorrectChoice correct answer choice first,
+		\choice z
+		\choice followed by the bogus answers
 	\end{choices}
-	\question The spacing of MC questions depends
+	\question[2] The spacing of MC questions depends
 	\begin{choices}
 		\choice on the available space on the page
 		\CorrectChoice which depends on how much instructions you wrote.
 	\end{choices}
-	\question So do me a favor and estimate the height taken up by the
+	\question[2] So do me a favor and estimate the height taken up by the
 	\begin{choices}
 		\choice title and instructions
 		\CorrectChoice measured in units of pt
@@ -170,18 +165,23 @@
 		\choice z
 		\choice z
 	\end{choices}
-	\question Better to overestimate than underestimate
+	\question[2] Better to overestimate than underestimate
 	\begin{choices}
-		\choice z
 		\CorrectChoice or else you might get some funky formatting
+		\choice z
 		\choice z
 	\end{choices}
 	\vfill\null\columnbreak
-	\question The option ``twocolumn'' does what you think it does
+	\question[2] The option ``twocolumn'' does what you think it does
 	\begin{choices}
 		\CorrectChoice z
 		\CorrectChoice z
 		\CorrectChoice z
+	\end{choices}
+	\question[2] The qworth option for MC and matching modules will print the pre-determined point-value
+	\begin{choices}
+		\CorrectChoice for all questions.
+		\choice To print point values for FRQ, see next section
 	\end{choices}
 \end{questions}
 \end{multicols*}
@@ -192,7 +192,7 @@
 \par\noindent \textbf{\large  Part III: Free Response}
 \par\noindent  Write legibly
 \begin{questions}
-\setcounter{question}{20}
+\setcounter{question}{21}
 \question A question can have parts and subparts
 	\begin{parts}
 	\part Here is a part
@@ -245,10 +245,16 @@
 		\newpage
 \end{questions}
 	\par \noindent\textbf{sss}
-	\par \noindent Lorem ipsum blah blah
-	\par \par\noindent Here is some introductory text and stuff
+	\par \par\noindent Lorem ipsum blah blah
+\\ [.2 in]
+\par\noindent If you want to insert your own \LaTeX\ for whatever reason, you can do it here.
+\par
+\begin{itemize}
+	\item item 1
+	\item item 2
+\end{itemize}
 \begin{questions}
-\setcounter{question}{26}
+\setcounter{question}{27}
 \question Back to some sweet
 	\begin{parts}
 	\part free
@@ -280,18 +286,18 @@
 	\begin{multicols}{5}
 	\begin{enumerate}
 	\setcounter{enumi}{0}
-	\item \choiceblank{A}
 	\item \choiceblank{H}
-	\item \choiceblank{K}
-	\item \choiceblank{C}
-	\item \choiceblank{F}
-	\item \choiceblank{B}
+	\item \choiceblank{G}
 	\item \choiceblank{J}
-	\item \choiceblank{E}
 	\item \choiceblank{G}
-	\item \choiceblank{G}
-	\item \choiceblank{I}
+	\item \choiceblank{C}
+	\item \choiceblank{A}
+	\item \choiceblank{B}
 	\item \choiceblank{D}
+	\item \choiceblank{K}
+	\item \choiceblank{E}
+	\item \choiceblank{F}
+	\item \choiceblank{I}
 	\end{enumerate}
 	\fixcolspacing
 	\end{multicols}
@@ -301,12 +307,13 @@
 	\begin{enumerate}
 	\setcounter{enumi}{12}
 	\item \choiceblank{A}
-	\item \choiceblank{C}
+	\item \choiceblank{B}
 	\item \choiceblank{A}
-	\item \choiceblank{C}
+	\item \choiceblank{A}
 	\item \choiceblank{B}
 	\item \choiceblank{B}
-	\item \choiceblank{B}
+	\item \choiceblank{A}
+	\item \choiceblank{A}
 	\item \choiceblank{A}
 	\end{enumerate}
 	\fixcolspacing
