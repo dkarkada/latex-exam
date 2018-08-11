@@ -4,7 +4,7 @@ import math
 from random import shuffle
 
 bang_pattern = r"\s*!(newpage|options|gap|img|pkg)"
-mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|mc|frq|match|text)\]"
+mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|match|mc|frq|text|latex)\]"
 sec_pattern = r"(?i)\s*\[(header|cover|section)\]"
 
 def compile_error(err):
@@ -66,7 +66,7 @@ def bang_to_tex(line, context):
 		if not args:
 			compile_error("Expected args for pkg.")
 		for arg in args:
-			tex_str += "\t\t\\usepackage{{{}}}\n".format(arg)
+			tex_str += "\\usepackage{{{}}}\n".format(arg)
 	return tex_str
 
 def update_options(bang, options):
@@ -85,8 +85,9 @@ def update_options(bang, options):
 
 class MCQuestion:
 
-	def __init__(self, question, choices, correct_choice):
+	def __init__(self, question, points, choices, correct_choice):
 		self.question = question
+		self.points = points
 		self.choices = choices
 		# if correct choice not specified, by default first given answer is correct
 		if not correct_choice:
@@ -99,7 +100,7 @@ class MCQuestion:
 	def to_tex(self):
 		"""Generates tex for MC question"""
 		tex_str = ""		
-		tex_str += "\t\\question {}\n".format(self.question)
+		tex_str += "\t\\question{} {}\n".format(self.points, self.question)
 		tex_str += "\t\\begin{choices}\n"
 		for choice in self.choices:
 			if choice == self.correct_choice:
@@ -109,9 +110,10 @@ class MCQuestion:
 		tex_str += "\t\\end{choices}\n"
 		return tex_str
 
-	def calc_height(self, qwidth, choicewidth):
+	def calc_height(self, qwidth, choicewidth, point_len):
 		"""Returns estimate of height (in pt) required to display question and choices."""
-		height = 11*math.ceil(len(self.question)/qwidth)+10
+		qlength = len(self.question)+point_len
+		height = 11*math.ceil(qlength/qwidth)+10
 		for choice in self.choices:
 			height += 11*math.ceil(len(choice)/choicewidth)+5
 		return height
@@ -141,7 +143,7 @@ class ExamModule:
 		# picks appropriate method for this module
 		tex_generator = getattr(self, self.mod_type+"_tex", None)
 		if not tex_generator:
-			compile_error("Illegal module: {}", self.mod_type)
+			compile_error("Illegal module: " + self.mod_type)
 		tex_str += tex_generator(qcount)
 		return tex_str
 
@@ -171,6 +173,57 @@ class ExamModule:
 				tex_str += bang_to_tex(line, context=None)
 		return tex_str
 
+	def match_tex(self, qcount):
+		"""Client should use to_tex()."""
+		content = self.content
+		bangs = self.bangs
+		options = self.options
+		# keeps question-answer pairs together while shuffling
+		question_data = []
+		# keep track of the first question number
+		initial_qcount = qcount[0]
+		# generate point-value tex
+		if "qworth" in options:
+			point_str = "[{}]".format(options["qworth"])
+		else:
+			point_str = ""
+		# build question_data
+		for line in content:
+			if line not in bangs:
+				line = make_latex_safe(line)
+				if len(line.split("::")) != 2:
+					compile_error("Invalid syntax in match: " + line)
+				line = line.split("::")
+				question_data.append(line)
+		if "noshuffle" not in options:
+			shuffle(question_data)
+		# remove duplicate answers and sort alphebetically
+		ans_list = sorted(list(set([line[0] for line in question_data])))
+		# make word bank
+		if len(ans_list) > 26:
+			compile_error("Too many choices in word bank.")
+		tex_str = "\\begin{wordbank}{3}\n"
+		for ans in ans_list:
+			tex_str += "\t\\wbelem{{{}}}\n".format(ans)
+		tex_str += "\\end{wordbank}\n"
+		tex_str += "\\begin{questions}\n"
+		tex_str += "\\setcounter{{question}}{{{}}}\n".format(qcount[0])
+		# generate questions and solution letters
+		solutions = []
+		for line in question_data:
+			question, ans = line[1].strip(), line[0].strip()
+			ans_letter = chr(65 + ans_list.index(ans))
+			solutions.append(ans_letter)
+			tex_str += "\t\\question{}\\match{{{}}}{{{}}}\n".format(point_str, ans_letter, question)
+			qcount[0] += 1
+		tex_str += "\\end{questions}\n"
+		# generate answers
+		if self.has_ans_sheet():
+			self.ans_str = self.gen_ans(initial_qcount, solutions)
+		else:
+			self.ans_str = tex_str 
+		return tex_str
+
 	def mc_tex(self, qcount):
 		"""Client should use to_tex()."""
 		content = self.content
@@ -180,8 +233,16 @@ class ExamModule:
 		initial_qcount = qcount[0]
 		questions = []
 		solutions = []
+		# generate point-value tex
+		if "qworth" in options:
+			point_str = "[{}]".format(options["qworth"])
+			# length of string to display points (i.e. "(2 points) "). Need for qheight
+			point_len = 11
+		else:
+			point_str = ""
+			point_len = 0 
 		# keep track of bang-generated tex to preserve order
-		bang_tex = []		
+		bang_tex = []
 		# generate questions and solutions
 		question_str = None
 		choices = []
@@ -200,8 +261,8 @@ class ExamModule:
 					choices.append(line.strip())
 				else:
 					if len(choices) == 0:
-						compile_error("No answer choices found: {}", question_str)
-					mcq = MCQuestion(question_str, choices, correct_choice)
+						compile_error("No answer choices found: " + question_str)
+					mcq = MCQuestion(question_str, point_str, choices, correct_choice)
 					questions.append(mcq)
 					solutions.append(mcq.get_answer())
 					# add accumulated bang tex after this question
@@ -217,7 +278,7 @@ class ExamModule:
 				if bang_line != "":
 					bang_tex.append(bang_line)
 		# append last question
-		mcq = MCQuestion(question_str, choices, correct_choice)
+		mcq = MCQuestion(question_str, point_str, choices, correct_choice)
 		questions.append(mcq)
 		solutions.append(mcq.get_answer())
 		# generate question tex
@@ -242,7 +303,7 @@ class ExamModule:
 		for question in questions:
 			if type(question) == MCQuestion:
 				qwidth, choicewidth = (50, 43) if "twocolumn" in options else (100, 80)
-				qheight = question.calc_height(qwidth, choicewidth)
+				qheight = question.calc_height(qwidth, choicewidth, point_len)
 				firstpage = col_num<=2 if "twocolumn" in options else col_num<=1
 				if not firstpage:
 					page_height_pt = 672
@@ -379,56 +440,6 @@ class ExamModule:
 			self.ans_str = tex_str.replace("!newpage", "")
 		return tex_str
 
-	def match_tex(self, qcount):
-		"""Client should use to_tex()."""
-		content = self.content
-		bangs = self.bangs
-		options = self.options
-		# keeps question-answer pairs together while shuffling
-		question_data = []
-		# keep track of the first question number
-		initial_qcount = qcount[0]
-		# build question_data
-		for line in content:
-			if line not in bangs:
-				line = make_latex_safe(line)
-				if len(line.split("::")) != 2:
-					compile_error("Invalid syntax in match: {}", line)
-				line = line.split("::")
-				question_data.append(line)
-		if "noshuffle" not in options:
-			shuffle(question_data)
-		# remove duplicate answers and sort alphebetically
-		ans_list = sorted(list(set([line[0] for line in question_data])))
-		# make word bank
-		if len(ans_list) > 26:
-			compile_error("Too many choices in word bank.")
-		tex_str = "\\begin{wordbank}{3}\n"
-		for ans in ans_list:
-			tex_str += "\t\\wbelem{{{}}}\n".format(ans)
-		tex_str += "\\end{wordbank}\n"
-		tex_str += "\\begin{questions}\n"
-		tex_str += "\\setcounter{{question}}{{{}}}\n".format(qcount[0])
-		if not "showpoints" in options:
-			tex_str += "\t\\hidepoints\n"
-		# generate questions and solution letters
-		solutions = []
-		for line in question_data:
-			question, ans = line[1], line[0]
-			ans_letter = chr(65 + ans_list.index(ans))
-			solutions.append(ans_letter)
-			tex_str += "\t\\question\\match{{{}}}{{{}}}\n".format(ans_letter, question)
-			qcount[0] += 1
-		if not "showpoints" in options:
-			tex_str += "\t\\showpoints\n"	
-		tex_str += "\\end{questions}\n"
-		# generate answers
-		if self.has_ans_sheet():
-			self.ans_str = self.gen_ans(initial_qcount, solutions)
-		else:
-			self.ans_str = tex_str 
-		return tex_str
-
 	def text_tex(self, qcount):
 		"""Client should use to_tex()."""
 		content = self.content
@@ -443,6 +454,10 @@ class ExamModule:
 			else:
 				tex_str += bang_to_tex(line, context=None)				
 		return tex_str
+
+	def latex_tex(self, qcount):
+		"""Client should use to_tex()."""
+		return "\n".join(self.content) + "\n"
 
 	def has_ans_sheet(self):
 		"""Returns true if this module has option ans=sheet"""
@@ -561,7 +576,7 @@ class ExamSection:
 			mt = mod.mod_type
 			bangs = mod.bangs
 			if mt not in spacings:
-				compile_error("Invalid module type in Cover: {}".format(mt))
+				compile_error("Invalid module type in Cover: " + mt)
 			# centering
 			if mt in ["title", "subtitle", "author", "info"] and not centered:
 				tex_str += "\t\\begin{center}\n"
