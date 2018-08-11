@@ -1,8 +1,10 @@
-[Cover]
 [Header]
+!pkg {physics, hyperref}
 Class
 Exam title
 Student ID
+
+[Cover]
 [Subtitle] Subtitle
 [Title] Title
 
@@ -99,6 +101,8 @@ A question can have parts and subparts
 		// solution
 You can put math here: $y=mx+b$ or alternatively \[i\hbar \frac{\partial \Psi}{\partial t} = -\frac{\hbar^2}{2m}\frac{\partial^2 \Psi}{\partial x^2} + V \Psi\] if you like this better.
 	// solution can have $math$ as well
+You can include commands from packages imported in the header. These come from the physics package: $\laplacian\div\grad\dv{x}$
+	// and this comes from the hyperref package: \url{google.com}
 Quotation "marks" and % symbols are preserved
 	// solution
 {3} Indicate point values by preceding questions with curly bracketed numbers
@@ -111,8 +115,8 @@ You can also directly put some \LaTeX\ commands in here
 
 !newpage
 [Text]
-\textbf{sss}
-Lorem ipsum blah blah
+\noindent\textbf{sss}
+\noindent Lorem ipsum blah blah
 \par\noindent Here is some introductory text and stuff
 
 [FRQ]

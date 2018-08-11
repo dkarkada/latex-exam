@@ -7,18 +7,6 @@
 \usepackage{multicol}
 \newcommand{\hidepoints}{\pointsinmargin\pointformat{}}
 \newcommand{\showpoints}{\nopointsinmargin\pointformat{(\thepoints)}}
-
-\usepackage{xcolor}
-\newcommand{\choiceblank}[1]{
-	\ifprintanswers \underline{\ \ #1\ \ }
-	\else \underline{\hspace{0.40 in}}
-	\fi
-	\vspace{0.05 in}
-}
-\newcommand{\fixcolspacing}{\vspace{0pt plus 1filll}\mbox{}}
-\renewcommand{\solutiontitle}{}
-\unframedsolutions
-\SolutionEmphasis{\color{violet}}
 \usepackage{etoolbox}
 \usepackage{intcalc}
 \usepackage{framed}
@@ -44,6 +32,20 @@
 }
 \setlength\answerclearance{3 pt}
 
+\usepackage{xcolor}
+\newcommand{\choiceblank}[1]{
+	\ifprintanswers \underline{\ \ #1\ \ }
+	\else \underline{\hspace{0.40 in}}
+	\fi
+	\vspace{0.05 in}
+}
+\newcommand{\fixcolspacing}{\vspace{0pt plus 1filll}\mbox{}}
+\renewcommand{\solutiontitle}{}
+\unframedsolutions
+\SolutionEmphasis{\color{violet}}
+
+		\usepackage{physics}
+		\usepackage{hyperref}
 
 \pagestyle{head}
 \header{Class}{Exam title - Page \thepage}{Student ID:\kern .5 in}
@@ -51,8 +53,6 @@
 
 \begin{document}
 \begin{coverpages}
-		\vspace{0.00 in}
-		\vspace{0.00 in}
 	\begin{center}
 		\vspace{0.05 in}
 		\par\noindent\textbf{\large  Subtitle}
@@ -67,8 +67,9 @@
 		\vspace{0.5 in}
 		\vspace{0.10 in}
 		\vspace{0.15 in}
+		\par
 		\def\arraystretch{2}\tabcolsep=3pt
-		\begin{tabular}{l r}
+		\begin{tabular}{r r}
 			\textbf{Student Name:} & \makebox[4in]{\hrulefill} \\
 			\textbf{Date:} & \makebox[4in]{\hrulefill} \\
 			\textbf{Any other info:} & \makebox[4in]{\hrulefill} \\
@@ -105,18 +106,18 @@
 \begin{questions}
 \setcounter{question}{0}
 	\hidepoints
-	\question\match{G}{ which are used more than once will only appear once in the wordbox}
-	\question\match{J}{ ans=sheet will create a separate answer sheet at the end}
-	\question\match{B}{ This is question 2}
+	\question\match{A}{ This is question 1}
+	\question\match{H}{ No dedicated answer sheet will be created}
 	\question\match{K}{ You include 'noshuffle' as an option}
 	\question\match{C}{ This is question 3}
 	\question\match{F}{ This is question 6}
-	\question\match{I}{ Will automatically shuffle}
-	\question\match{G}{ are sorted alphabetically, while}
-	\question\match{D}{ This is question 4}
+	\question\match{B}{ This is question 2}
+	\question\match{J}{ ans=sheet will create a separate answer sheet at the end}
 	\question\match{E}{ This is question 5}
-	\question\match{H}{ No dedicated answer sheet will be created}
-	\question\match{A}{ This is question 1}
+	\question\match{G}{ which are used more than once will only appear once in the wordbox}
+	\question\match{G}{ are sorted alphabetically, while}
+	\question\match{I}{ Will automatically shuffle}
+	\question\match{D}{ This is question 4}
 	\showpoints
 \end{questions}
 
@@ -131,15 +132,15 @@
 \setcounter{question}{12}
 	\question New sections autmatically
 	\begin{choices}
-		\choice z
 		\CorrectChoice Create a pagebreak
+		\choice z
 		\choice z
 	\end{choices}
 	\question Multiple choice questions
 	\begin{choices}
 		\choice z
-		\CorrectChoice automatically have answers shuffled
 		\choice z
+		\CorrectChoice automatically have answers shuffled
 		\choice z
 	\end{choices}
 	\question Unless you mark the correct answer
@@ -172,8 +173,8 @@
 	\question Better to overestimate than underestimate
 	\begin{choices}
 		\choice z
-		\choice z
 		\CorrectChoice or else you might get some funky formatting
+		\choice z
 	\end{choices}
 	\vfill\null\columnbreak
 	\question The option ``twocolumn'' does what you think it does
@@ -218,6 +219,10 @@
 	\begin{solution}[20 pt]
 	solution can have $math$ as well
 	\end{solution}
+\question You can include commands from packages imported in the header. These come from the physics package: $\laplacian\div\grad\dv{x}$
+	\begin{solution}[20 pt]
+	and this comes from the hyperref package: \url{google.com}
+	\end{solution}
 \question Quotation ``marks'' and \% symbols are preserved
 	\begin{solution}[20 pt]
 	solution
@@ -239,11 +244,11 @@
 	\end{solution}
 		\newpage
 \end{questions}
-	\par \section*{Section title}
-	\par Lorem ipsum blah blah
+	\par \noindent\textbf{sss}
+	\par \noindent Lorem ipsum blah blah
 	\par \par\noindent Here is some introductory text and stuff
 \begin{questions}
-\setcounter{question}{25}
+\setcounter{question}{26}
 \question Back to some sweet
 	\begin{parts}
 	\part free
@@ -275,18 +280,18 @@
 	\begin{multicols}{5}
 	\begin{enumerate}
 	\setcounter{enumi}{0}
-	\item \choiceblank{G}
-	\item \choiceblank{J}
-	\item \choiceblank{B}
+	\item \choiceblank{A}
+	\item \choiceblank{H}
 	\item \choiceblank{K}
 	\item \choiceblank{C}
 	\item \choiceblank{F}
-	\item \choiceblank{I}
-	\item \choiceblank{G}
-	\item \choiceblank{D}
+	\item \choiceblank{B}
+	\item \choiceblank{J}
 	\item \choiceblank{E}
-	\item \choiceblank{H}
-	\item \choiceblank{A}
+	\item \choiceblank{G}
+	\item \choiceblank{G}
+	\item \choiceblank{I}
+	\item \choiceblank{D}
 	\end{enumerate}
 	\fixcolspacing
 	\end{multicols}
@@ -295,13 +300,13 @@
 	\begin{multicols}{5}
 	\begin{enumerate}
 	\setcounter{enumi}{12}
-	\item \choiceblank{B}
-	\item \choiceblank{B}
+	\item \choiceblank{A}
+	\item \choiceblank{C}
 	\item \choiceblank{A}
 	\item \choiceblank{C}
 	\item \choiceblank{B}
 	\item \choiceblank{B}
-	\item \choiceblank{C}
+	\item \choiceblank{B}
 	\item \choiceblank{A}
 	\end{enumerate}
 	\fixcolspacing
