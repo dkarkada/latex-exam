@@ -4,7 +4,7 @@ import math
 from random import shuffle
 
 bang_pattern = r"\s*!(newpage|options|gap|img|pkg)"
-mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|match|mc|frq|text|latex)\]"
+mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|match|tf|mc|frq|text|latex)\]"
 sec_pattern = r"(?i)\s*\[(header|cover|section)\]"
 
 def compile_error(err):
@@ -15,12 +15,16 @@ def compile_error(err):
 def make_latex_safe(line):
 	"""Replace LaTeX-sensitive characters with LaTeX counterparts. Returns modified line."""
 	line = line.replace("%", "\\%")
-	# search for quoted substrings, replace with ``''
-	match = re.search("\"[^\"]*\"", line)
-	while match:
+	# search for double quoted substrings, replace with ``''
+	matches = re.finditer("\"[^\"]*\"", line)
+	for match in matches:
 		repl = "``{}''".format(match.group(0)[1:-1])
 		line = line[:match.start()] + repl + line[match.end():]
-		match = re.match("\"[^\"]*\"", line)
+	# search for single quoted substrings, replace with `'
+	matches = re.finditer("'[^']+'", line)
+	for match in matches:
+		repl = "`{}'".format(match.group(0)[1:-1])
+		line = line[:match.start()] + repl + line[match.end():]
 	return line
 
 def bang_args(line):
@@ -174,6 +178,12 @@ class ExamModule:
 		return tex_str
 
 	def match_tex(self, qcount):
+		return self.match_tf_tex(qcount, is_tf=False)		
+
+	def tf_tex(self, qcount):
+		return self.match_tf_tex(qcount, is_tf=True)
+
+	def match_tf_tex(self, qcount, is_tf):
 		"""Client should use to_tex()."""
 		content = self.content
 		bangs = self.bangs
@@ -200,19 +210,27 @@ class ExamModule:
 		# remove duplicate answers and sort alphebetically
 		ans_list = sorted(list(set([line[0] for line in question_data])))
 		# make word bank
-		if len(ans_list) > 26:
-			compile_error("Too many choices in word bank.")
-		tex_str = "\\begin{wordbank}{3}\n"
-		for ans in ans_list:
-			tex_str += "\t\\wbelem{{{}}}\n".format(ans)
-		tex_str += "\\end{wordbank}\n"
+		if is_tf:			
+			if len(ans_list) != 2:
+				compile_error("Can only have 2 answers for true/false.")
+			tex_str = ""
+		else:
+			if len(ans_list) > 26:
+				compile_error("Too many choices in word bank.")
+			tex_str = "\\begin{wordbank}{3}\n"
+			for ans in ans_list:
+				tex_str += "\t\\wbelem{{{}}}\n".format(ans)
+			tex_str += "\\end{wordbank}\n"
+		# generate questions and solution letters
 		tex_str += "\\begin{questions}\n"
 		tex_str += "\\setcounter{{question}}{{{}}}\n".format(qcount[0])
-		# generate questions and solution letters
 		solutions = []
 		for line in question_data:
 			question, ans = line[1].strip(), line[0].strip()
-			ans_letter = chr(65 + ans_list.index(ans))
+			if is_tf:
+				ans_letter = 'T' if ans.lower() in ["t","true"] else 'F'
+			else:
+				ans_letter = chr(65 + ans_list.index(ans))
 			solutions.append(ans_letter)
 			tex_str += "\t\\question{}\\match{{{}}}{{{}}}\n".format(point_str, ans_letter, question)
 			qcount[0] += 1
@@ -221,7 +239,7 @@ class ExamModule:
 		if self.has_ans_sheet():
 			self.ans_str = self.gen_ans(initial_qcount, solutions)
 		else:
-			self.ans_str = tex_str 
+			self.ans_str = tex_str
 		return tex_str
 
 	def mc_tex(self, qcount):
@@ -472,7 +490,7 @@ class ExamModule:
 			(hierarchy, hieght_str, solution_str).
 		"""
 		ans_str = ""
-		if self.mod_type in ["match", "mc"]:
+		if self.mod_type in ["match", "tf", "mc"]:
 			ans_str += "\t\\raggedcolumns\n"
 			ans_str += "\t\\begin{multicols}{5}\n"
 			ans_str += "\t\\begin{enumerate}\n"
@@ -660,7 +678,7 @@ class ExamSection:
 		for module in self.modules:
 			if module.mod_type == "title":
 				title_tex = module.title_tex(qcount=None)
-			elif module.mod_type in ["match", "frq", "mc"]:
+			elif module.mod_type in ["match", "tf", "frq", "mc"]:
 				if ans_key or module.has_ans_sheet():
 					if untitled:
 						# newpage if copying section straight from exam

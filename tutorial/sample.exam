@@ -24,7 +24,7 @@ Throughout the exam, you can use the following bangs: gap (which inserts vertica
 [Author] Dhruva Karkada, dkarkada@gmail.com
 
 [Section]
-[Title] Part I: Matching
+[Title] Matching
 [Instructions] 2 points each. Each choice will be used; some more than once.
 [Match]
 !options {ans=sheet}
@@ -41,9 +41,19 @@ The option:: ans=sheet will create a separate answer sheet at the end
 Otherwise:: No dedicated answer sheet will be created
 Answers:: which are used more than once will only appear once in the wordbox
 
+[Section]
+[Title] True/false questions
+[TF]
+!options {noshuffle}
+T:: A new section will create a page break.
+T:: The true/false section is just like the matching, except no word bank is created
+T:: And instead of lettering the choices in the word bank, the answer is either 'T' or 'F'
+F:: Mars is blue
+F:: America was founded in 1634
+T:: This \LaTeX\ tool is really cool and useful
 
 [Section]
-[Title] Part II: Multiple Choice
+[Title] The title is Multiple Choice
 [MC]
 !options {intro-height=30, twocolumn, ans=sheet, qworth=2}
 New sections automatically
@@ -87,7 +97,7 @@ The qworth option for MC and matching modules will print the pre-determined poin
 	To print point values for FRQ, see next section
 
 [Section]
-[Title] Part III: Free Response
+[Title] Free Response
 [Instructions] Write legibly
 [FRQ]
 !options {ans=here}
