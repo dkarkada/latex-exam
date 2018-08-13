@@ -28,13 +28,15 @@ cd "$(dirname "$(readlink -f "$0")")"
 # generate tex
 if [[ "$1" = /* ]]; then
 	# absolute path
-	python3 examtex.py "$1"
+	err=$(python3 examtex.py "$1")
 else
 	# relative path
-	python3 examtex.py "$cwd/$1"
+	err=$(python3 examtex.py "$cwd/$1")
 fi
+if [ "$err" != "" ]; then
+	echo "$err"
 # compile pdf from tex
-if [ $to_pdf = 'true' ]; then
+elif [ $to_pdf = 'true' -a "$err" = "" ]; then
 	cd "$(dirname "$1")"
 	latexmk -pdf -quiet "${1%.*}-EXAM.tex"
 	latexmk -pdf -quiet "${1%.*}-KEY.tex"
