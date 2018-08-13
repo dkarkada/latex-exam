@@ -4,7 +4,7 @@ import math
 from random import shuffle
 
 bang_pattern = r"\s*!(newpage|options|gap|img|pkg)"
-mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|match|tf|mc|frq|text|latex)\]"
+mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|match|tf|mc|frq|text|latex|table)\]"
 sec_pattern = r"(?i)\s*\[(header|cover|section)\]"
 
 def compile_error(err):
@@ -477,6 +477,42 @@ class ExamModule:
 		"""Client should use to_tex()."""
 		return "\n".join(self.content) + "\n"
 
+	def table_tex(self, qcount):
+		"""Client should use to_tex()."""
+		content = self.content
+		bangs = self.bangs
+		options = self.options
+		if "pattern" not in options:
+			compile_error("Expected pattern option in table module.")
+		pattern = options["pattern"]
+		if "boxed" in options:
+			pattern = "|{}|".format(pattern)
+		tex_str = "\\begin{center}\n"
+		if "linespace" in options:
+			tex_str += "\\def\\arraystretch{{{}}}\n".format(options["linespace"])
+		tex_str += "\\begin{{tabular}}{{{}}}\n".format(pattern)
+		if "boxed" in options:
+			tex_str += "\\hline\n"
+		for line in content:
+			if line not in bangs:
+				if re.match(r"\s*-*\s*$", line):
+					tex_str += "\t\\hline\n"
+				else:
+					line = make_latex_safe(line)
+					line = re.sub(r"\\i\s*{", r"\\textit{", line)
+					line = re.sub(r"\\b\s*{", r"\\textbf{", line)
+					line = line.split("\t")
+					line = [tdata for tdata in line if tdata != ""]
+					line = " & ".join(line) + "\\\\"
+					tex_str += "\t{}\n".format(line)
+			else:
+				tex_str += bang_to_tex(line, context={"centered":True})
+		if "boxed" in options:
+			tex_str += "\\hline\n"
+		tex_str += "\\end{tabular}\n"
+		tex_str += "\\end{center}\n"
+		return tex_str
+
 	def has_ans_sheet(self):
 		"""Returns true if this module has option ans=sheet"""
 		return "ans" in self.options and self.options["ans"]=="sheet"
@@ -582,7 +618,7 @@ class ExamSection:
 		centered = False
 		# top/bottom margins for each module
 		spacings = {"title": "0.10", "subtitle": "0.05", "author": "0.05",\
-					"info": "0.15", "instructions": "0.15"}
+					"info": "0.15", "instructions": "0.15", "text":"0.10", "latex":"0.00"}
 		tex_str = "\\begin{coverpages}\n"
 		# section bangs
 		for line in self.content:
@@ -630,8 +666,10 @@ class ExamSection:
 					if mt == "info":
 						tex_str += "\t\t\t\\textbf{{{}:}} & \\makebox[4in]{{\\hrulefill}} \\\\\n".format(
 							line.strip())
-					if mt == "instructions":
+					if mt in ["instructions", "text"]:
 						tex_str += "\t\\par {}\n".format(line.strip())
+					if mt == "latex":
+						tex_str += line + "\n"
 				else:
 					tex_str += bang_to_tex(line, context={"centered": centered})
 			if mt == "info":
