@@ -20,11 +20,11 @@ def make_latex_safe(line):
 	for match in matches:
 		repl = "``{}''".format(match.group(0)[1:-1])
 		line = line[:match.start()] + repl + line[match.end():]
-	# search for single quoted substrings, replace with `'
-	matches = re.finditer("'[^']+'", line)
+	# search for single quoted substrings, replace with `'. Capture surrounding whitespace
+	matches = re.finditer("\\s'[^']+'\\s", line)
 	for match in matches:
-		repl = "`{}'".format(match.group(0)[1:-1])
-		line = line[:match.start()] + repl + line[match.end():]
+		repl = "`{}'".format(match.group(0)[2:-2])
+		line = line[:match.start()+1] + repl + line[match.end()-1:]
 	return line
 
 def bang_args(line):
@@ -642,9 +642,11 @@ class ExamSection:
 			spacing = spacings[mt]
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
 			# module content
-			if mt == "info":
+			if mt in ["info", "author"]:
 				tex_str += "\t\t\\par\n"
 				tex_str += "\t\t\\def\\arraystretch{2}\\tabcolsep=3pt\n\t\t\\begin{tabular}{r r}\n"
+			if mt == "author":
+				tex_str += "\t\t\t\\textbf{{Written by:}}\n"
 			for line in content:
 				if line not in bangs:
 					line = make_latex_safe(line)
@@ -659,10 +661,10 @@ class ExamSection:
 							splt = match.end()
 							author = line[:splt-1]
 							author_info = line[splt:]
-							tex_str += "\t\t\\par\\noindent\\textbf{{Written by: {}}}, \\textit{{{}}}\n".format(
+							tex_str += "\t\t\t & \\textbf{{{}}}, \\textit{{{}}} \\\\\n".format(
 								author, author_info)
 						else:
-							tex_str += "\t\t\\textbf{{Written by: {}}}\n".format(content[0])
+							tex_str += "\t\t\t & \\textbf{{{}}} \\\\\n".format(content[0])
 					if mt == "info":
 						tex_str += "\t\t\t\\textbf{{{}:}} & \\makebox[4in]{{\\hrulefill}} \\\\\n".format(
 							line.strip())
@@ -672,7 +674,7 @@ class ExamSection:
 						tex_str += line + "\n"
 				else:
 					tex_str += bang_to_tex(line, context={"centered": centered})
-			if mt == "info":
+			if mt in ["info", "author"]:
 				tex_str += "\t\t\\end{tabular}\n"
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
 		# close centering after last module
