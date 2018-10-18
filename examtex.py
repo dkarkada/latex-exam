@@ -16,15 +16,17 @@ def make_latex_safe(line):
 	"""Replace LaTeX-sensitive characters with LaTeX counterparts. Returns modified line."""
 	line = line.replace("%", "\\%")
 	# search for double quoted substrings, replace with ``''
-	matches = re.finditer("\"[^\"]*\"", line)
-	for match in matches:
+	match = re.search("\"[^\"]*\"", line)
+	while match:
 		repl = "``{}''".format(match.group(0)[1:-1])
 		line = line[:match.start()] + repl + line[match.end():]
+		match = re.search("\"[^\"]*\"", line)
 	# search for single quoted substrings, replace with `'. Capture surrounding whitespace
-	matches = re.finditer("\\s'[^']+'\\s", line)
-	for match in matches:
+	match = re.search("\\s'[^']+'\\s", line)
+	while match:
 		repl = "`{}'".format(match.group(0)[2:-2])
 		line = line[:match.start()+1] + repl + line[match.end()-1:]
+		match = re.search("\\s'[^']+'\\s", line)
 	return line
 
 def bang_args(line):
