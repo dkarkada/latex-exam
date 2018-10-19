@@ -21,7 +21,7 @@ contexts:
     - match: '\s*{\d+}'
       scope: entity.name.exam
 
-    - match: '!(newpage|options|gap|img|pkg)'
+    - match: '!(newpage|options|gap|img|pkg|newcol|txt|hrule)'
       scope: variable.function.exam
 
   tag:

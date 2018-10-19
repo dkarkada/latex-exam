@@ -4,6 +4,7 @@ import math
 from random import shuffle
 
 bang_pattern = r"\s*!(newpage|options|gap|img|pkg)"
+mc_bang_pattern = r"\s*!(newcol|txt|hrule)"
 mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|match|tf|mc|frq|text|latex|table)\]"
 sec_pattern = r"(?i)\s*\[(header|cover|section)\]"
 
@@ -47,7 +48,8 @@ def bang_to_tex(line, context):
 	if re.match(r"\s*!img", line):
 		if not args:
 			compile_error("Expected args for img.")
-		tex_str += "\t\t\\vspace{0.05 in}\n"
+		tex_str += "\t\t\\par\\noindent\n"
+		# tex_str += "\t\t\\vspace{0.05 in}\n"
 		if len(args) == 1:
 			img_str = "\t\t\\includegraphics{{{}}}\n".format(args[0])
 		else:
@@ -73,6 +75,19 @@ def bang_to_tex(line, context):
 			compile_error("Expected args for pkg.")
 		for arg in args:
 			tex_str += "\\usepackage{{{}}}\n".format(arg)
+	if re.match(r"\s*!hrule", line):
+		tex_str += "\t\t\\par\n"
+		tex_str += "\t\t\\hrulefill\n"
+		tex_str += "\t\t\\vspace{0.05 in}\n"
+	if re.match(r"\s*!txt", line):
+		if not args:
+			compile_error("Expected args for txt.")
+		tex_str += "\t\\begin{flushleft}\n";
+		for arg in args:
+			tex_str += "\t\\par {}\n".format(arg);
+		tex_str += "\t\\end{flushleft}\n";
+	if re.match(r"\s*!newcol", line):
+		tex_str += "" # do nothing
 	return tex_str
 
 def update_options(bang, options):
@@ -137,6 +152,8 @@ class ExamModule:
 		self.content = [line.rstrip() for line in content if not re.match(r"\s*$", line)]
 		# filter content for bangs		
 		self.bangs = [line for line in self.content if re.match(bang_pattern, line)]
+		if mod_type == "mc":
+			self.bangs += [line for line in self.content if re.match(mc_bang_pattern, line)]
 		# set up module options
 		self.options = {}
 		for line in self.bangs:
@@ -262,7 +279,7 @@ class ExamModule:
 			point_str = ""
 			point_len = 0 
 		# keep track of bang-generated tex to preserve order
-		bang_tex = []
+		current_bangs = []
 		# generate questions and solutions
 		question_str = None
 		choices = []
@@ -271,6 +288,10 @@ class ExamModule:
 			if line not in bangs:
 				line = make_latex_safe(line)
 				if not question_str:
+					# add accumulated bang tex before first question
+					if current_bangs:
+						questions += current_bangs
+						current_bangs = []
 					question_str = line
 				elif re.match("\t+", line):
 					# check if correct answer specified; by default first choice is correct
@@ -285,22 +306,24 @@ class ExamModule:
 					mcq = MCQuestion(question_str, point_str, choices, correct_choice)
 					questions.append(mcq)
 					solutions.append(mcq.get_answer())
-					# add accumulated bang tex after this question
-					if bang_tex:
-						questions.append("".join(bang_tex))
-						bang_tex = []
+					# add accumulated bang tex before next question
+					if current_bangs:
+						questions += current_bangs
+						current_bangs = []
+					# start next question
 					question_str = line
 					choices = []
 					correct_choice = None
 			else:
-				twocolumn = "twocolumn" in options
-				bang_line = bang_to_tex(line, context={"twocolumn":twocolumn})
-				if bang_line != "":
-					bang_tex.append(bang_line)
+				current_bangs.append(line)
 		# append last question
 		mcq = MCQuestion(question_str, point_str, choices, correct_choice)
 		questions.append(mcq)
 		solutions.append(mcq.get_answer())
+		# add accumulated bang tex at the end
+		if current_bangs:
+			questions += current_bangs
+			current_bangs = []
 		# generate question tex
 		tex_str = ""
 		if "twocolumn" in options:
@@ -340,10 +363,13 @@ class ExamModule:
 				tex_str += question.to_tex()
 				qcount[0] += 1
 			else:
-				# "question" is actually bang tex
-				tex_str += question
+				# "question" is actually bang
+				bang = question
+				is_twocolumn = "twocolumn" in options
+				bang_tex = bang_to_tex(bang, context={"twocolumn":is_twocolumn})
+				tex_str += bang_tex
 				# new column since bang tex could screw with spacing
-				if "!img" or "!gap" in question:
+				if "!newcol" in bang:
 					cur_line = 0
 					if "twocolumn" in options:
 						tex_str += "\t\\vfill\\null\\columnbreak\n"
