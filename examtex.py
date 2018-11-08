@@ -3,7 +3,7 @@ import re
 import math
 from random import shuffle
 
-bang_pattern = r"\s*!(newpage|options|gap|img|pkg)"
+bang_pattern = r"\s*!(newpage|options|ans-options|gap|img|pkg)"
 mc_bang_pattern = r"\s*!(newcol|txt|hrule)"
 mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|match|tf|mc|frq|text|latex|table)\]"
 sec_pattern = r"(?i)\s*\[(header|cover|section)\]"
@@ -41,7 +41,7 @@ def bang_args(line):
 		return args
 	return None
 
-def bang_to_tex(line, context):
+def bang_to_tex(line, centered=False):
 	"""Parses a bang and returns the corresponding tex"""
 	args = bang_args(line)
 	tex_str = ""
@@ -55,7 +55,7 @@ def bang_to_tex(line, context):
 		else:
 			img_str = "\t\t\\includegraphics[width={}]{{{}}}\n".format(args[1], args[0])
 		# check if bang is already centered
-		if (context is None) or ("centered" not in context) or (context["centered"]==False):
+		if not centered:
 			tex_str += "\t\\begin{center}\n"
 			tex_str += img_str
 			tex_str += "\t\\end{center}\n"
@@ -90,7 +90,7 @@ def bang_to_tex(line, context):
 		tex_str += "" # do nothing
 	return tex_str
 
-def update_options(bang, options):
+def update_options(bang, options, ans_options):
 	"""Parses an options bang and updates the options dict."""
 	args = bang_args(bang)
 	if re.match(r"\s*!options", bang):		
@@ -103,6 +103,16 @@ def update_options(bang, options):
 				options[arg[:match.start()]] = arg[match.end():]
 			else:
 				options[arg] = ''
+	elif re.match(r"\s*!ans-options", bang):		
+		if not args:
+			compile_error("Expected args for ans-options.")
+		for arg in args:
+			# check if ans-option has a value vs. is a flag
+			match = re.search("=", arg)
+			if match:
+				ans_options[arg[:match.start()]] = arg[match.end():]
+			else:
+				ans_options[arg] = ''
 
 class MCQuestion:
 
@@ -156,8 +166,9 @@ class ExamModule:
 			self.bangs += [line for line in self.content if re.match(mc_bang_pattern, line)]
 		# set up module options
 		self.options = {}
+		self.ans_options = {}
 		for line in self.bangs:
-			update_options(line, options=self.options)
+			update_options(line, options=self.options, ans_options=self.ans_options)
 		self.ans_str = ""
 
 	def to_tex(self, qcount):
@@ -180,7 +191,7 @@ class ExamModule:
 				line = make_latex_safe(line)
 				tex_str += "\\par\\noindent \\textbf{{\\large {}}}\n".format(line)
 			else:
-				tex_str += bang_to_tex(line, context=None)
+				tex_str += bang_to_tex(line)
 		return tex_str
 
 	def instructions_tex(self, qcount):
@@ -193,7 +204,7 @@ class ExamModule:
 				line = make_latex_safe(line)
 				tex_str += "\\par\\noindent {}\n".format(line)
 			else:
-				tex_str += bang_to_tex(line, context=None)
+				tex_str += bang_to_tex(line)
 		return tex_str
 
 	def match_tex(self, qcount):
@@ -255,7 +266,7 @@ class ExamModule:
 			qcount[0] += 1
 		tex_str += "\\end{questions}\n"
 		# generate answers
-		if self.has_ans_sheet():
+		if "sheet" in self.ans_options:
 			self.ans_str = self.gen_ans(initial_qcount, solutions)
 		else:
 			self.ans_str = tex_str
@@ -365,8 +376,7 @@ class ExamModule:
 			else:
 				# "question" is actually bang
 				bang = question
-				is_twocolumn = "twocolumn" in options
-				bang_tex = bang_to_tex(bang, context={"twocolumn":is_twocolumn})
+				bang_tex = bang_to_tex(bang)
 				tex_str += bang_tex
 				# new column since bang tex could screw with spacing
 				if "!newcol" in bang:
@@ -382,7 +392,7 @@ class ExamModule:
 			tex_str += "\\renewcommand{\\choiceshook}{}\n"
 			tex_str += "\\renewcommand{\\questionshook}{}\n"
 		# generate answers
-		if self.has_ans_sheet():
+		if "sheet" in self.ans_options:
 			self.ans_str = self.gen_ans(initial_qcount, solutions)
 		else:
 			self.ans_str = tex_str
@@ -468,12 +478,12 @@ class ExamModule:
 					# solution tex
 					tab_str = "\t"*(indent_count+1)
 					tex_str += "{}\\begin{{solution}}{}\n".format(tab_str,
-						height_str if not self.has_ans_sheet() else "")
+						height_str if not "sheet" in self.ans_options else "")
 					tex_str += "{}{}\n".format(tab_str, line)
 					solutions.append((hierarchy.copy(), height_str, line))
 					tex_str += tab_str + "\\end{solution}\n"
 			else:
-				tex_str += bang_to_tex(line, context=None)
+				tex_str += bang_to_tex(line)
 		# close any remaining subparts or parts environments
 		indent_change = 0 - prev_indent_count
 		if indent_change == -2:
@@ -483,7 +493,7 @@ class ExamModule:
 			tex_str += "\t\\end{parts}\n"
 		tex_str += "\\end{questions}\n"
 		# generate answers
-		if self.has_ans_sheet():
+		if "sheet" in self.ans_options:
 			self.ans_str = self.gen_ans(None, solutions)
 		else:
 			self.ans_str = tex_str.replace("!newpage", "")
@@ -501,7 +511,7 @@ class ExamModule:
 				line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 				tex_str += "\t\\par {}\n".format(line)
 			else:
-				tex_str += bang_to_tex(line, context=None)				
+				tex_str += bang_to_tex(line)				
 		return tex_str
 
 	def latex_tex(self, qcount):
@@ -537,16 +547,12 @@ class ExamModule:
 					line = " & ".join(line) + "\\\\"
 					tex_str += "\t{}\n".format(line)
 			else:
-				tex_str += bang_to_tex(line, context={"centered":True})
+				tex_str += bang_to_tex(line, centered=True)
 		if "boxed" in options:
 			tex_str += "\\hline\n"
 		tex_str += "\\end{tabular}\n"
 		tex_str += "\\end{center}\n"
 		return tex_str
-
-	def has_ans_sheet(self):
-		"""Returns true if this module has option ans=sheet"""
-		return "ans" in self.options and self.options["ans"]=="sheet"
 
 	def gen_ans(self, initial_qcount, solutions):
 		"""
@@ -654,7 +660,7 @@ class ExamSection:
 		# section bangs
 		for line in self.content:
 			if re.match(bang_pattern, line):
-				tex_str += bang_to_tex(line, context=None)
+				tex_str += bang_to_tex(line)
 		# module tex
 		for mod in self.modules:
 			content = mod.content
@@ -704,7 +710,7 @@ class ExamSection:
 					if mt == "latex":
 						tex_str += line + "\n"
 				else:
-					tex_str += bang_to_tex(line, context={"centered": centered})
+					tex_str += bang_to_tex(line, centered=True)
 			if mt in ["info", "author"]:
 				tex_str += "\t\t\\end{tabular}\n"
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
@@ -723,7 +729,7 @@ class ExamSection:
 		# section bangs
 		for line in self.content:
 			if re.match(bang_pattern, line):
-				tex_str += bang_to_tex(line, context=None)
+				tex_str += bang_to_tex(line)
 		# module tex
 		for module in self.modules:
 			tex_str += module.to_tex(qcount)
@@ -733,7 +739,7 @@ class ExamSection:
 		tex_str = ""
 		for line in self.content:
 			if re.match(r"\s*!pkg", line):
-				tex_str += bang_to_tex(line, context=None)
+				tex_str += bang_to_tex(line)
 		return tex_str
 
 	def ans_tex(self, ans_key):
@@ -750,10 +756,10 @@ class ExamSection:
 			if module.mod_type == "title":
 				title_tex = module.title_tex(qcount=None)
 			elif module.mod_type in ["match", "tf", "frq", "mc"]:
-				if ans_key or module.has_ans_sheet():
+				if ans_key or "sheet" in module.ans_options:
 					if untitled:
 						# newpage if copying section straight from exam
-						if not module.has_ans_sheet():
+						if not "sheet" in module.ans_options:
 							ans_str += "\\newpage\n"
 						untitled = False
 						ans_str += title_tex
