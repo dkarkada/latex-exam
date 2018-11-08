@@ -83,8 +83,8 @@ def bang_to_tex(line, context):
 		if not args:
 			compile_error("Expected args for txt.")
 		tex_str += "\t\\begin{flushleft}\n";
-		for arg in args:
-			tex_str += "\t\\par {}\n".format(arg);
+		snippet = ", ".join(args)
+		tex_str += "\t\\par {}\n".format(snippet);
 		tex_str += "\t\\end{flushleft}\n";
 	if re.match(r"\s*!newcol", line):
 		tex_str += "" # do nothing
@@ -443,6 +443,9 @@ class ExamModule:
 						point_str = "[{}]".format(point_str)
 						line = line[match.end():]
 					# question tex
+					# empty question (subparts without question)
+					if line == "*":
+						line = ""
 					if indent_count == 0:
 						tex_str += "\\question{} {}\n".format(point_str, line)
 						qcount[0] += 1
