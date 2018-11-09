@@ -82,10 +82,10 @@ def bang_to_tex(line, centered=False):
 	if re.match(r"\s*!txt", line):
 		if not args:
 			compile_error("Expected args for txt.")
-		tex_str += "\t\\begin{flushleft}\n";
+		tex_str += "\t\\begin{flushleft}\n"
 		snippet = ", ".join(args)
-		tex_str += "\t\\par {}\n".format(snippet);
-		tex_str += "\t\\end{flushleft}\n";
+		tex_str += "\t\\par {}\n".format(snippet)
+		tex_str += "\t\\end{flushleft}\n"
 	if re.match(r"\s*!newcol", line):
 		tex_str += "" # do nothing
 	return tex_str
@@ -169,7 +169,8 @@ class ExamModule:
 		self.ans_options = {}
 		for line in self.bangs:
 			update_options(line, options=self.options, ans_options=self.ans_options)
-		self.ans_str = ""
+		self.ans_sheet_str = ""
+		self.ans_key_str = ""
 
 	def to_tex(self, qcount):
 		"""Generates tex for module."""
@@ -265,11 +266,11 @@ class ExamModule:
 			tex_str += "\t\\question{}\\match{{{}}}{{{}}}\n".format(point_str, ans_letter, question)
 			qcount[0] += 1
 		tex_str += "\\end{questions}\n"
-		# generate answers
-		if "sheet" in self.ans_options:
-			self.ans_str = self.gen_ans(initial_qcount, solutions)
-		else:
-			self.ans_str = tex_str
+		# generate answers, default values
+		self.ans_sheet_str = tex_str
+		self.ans_key_str = tex_str
+		# non default case
+		self.gen_ans(initial_qcount, solutions)
 		return tex_str
 
 	def mc_tex(self, qcount):
@@ -391,11 +392,11 @@ class ExamModule:
 			tex_str += "\\end{multicols*}\n"
 			tex_str += "\\renewcommand{\\choiceshook}{}\n"
 			tex_str += "\\renewcommand{\\questionshook}{}\n"
-		# generate answers
-		if "sheet" in self.ans_options:
-			self.ans_str = self.gen_ans(initial_qcount, solutions)
-		else:
-			self.ans_str = tex_str
+		# generate answers, default values
+		self.ans_sheet_str = tex_str
+		self.ans_key_str = tex_str
+		# non default case
+		self.gen_ans(initial_qcount, solutions)
 		return tex_str
 
 	def frq_tex(self, qcount):
@@ -404,12 +405,13 @@ class ExamModule:
 		bangs = self.bangs
 		options = self.options
 		solutions = []
+		initial_qcount = qcount[0]
 		# 3-item list for question number, part number, subpart number
 		hierarchy = [qcount[0], 0, 0]
 		# indents indicate question hierarchy
 		prev_indent_count = indent_count = 0
 		tex_str = "\\begin{questions}\n"
-		tex_str += "\\setcounter{{question}}{{{}}}\n".format(qcount[0])
+		tex_str += "\t\\setcounter{{question}}{{{}}}\n".format(qcount[0])
 		for line in content:
 			if line not in bangs:
 				line = make_latex_safe(line)
@@ -457,31 +459,31 @@ class ExamModule:
 					if line == "*":
 						line = ""
 					if indent_count == 0:
-						tex_str += "\\question{} {}\n".format(point_str, line)
+						tex_str += "\t\\question{} {}\n".format(point_str, line)
 						qcount[0] += 1
 					elif indent_count == 1:
-						tex_str += "\t\\part{} {}\n".format(point_str, line)
+						tex_str += "\t\t\\part{} {}\n".format(point_str, line)
 					else:
-						tex_str += "\t\t\\subpart{} {}\n".format(point_str, line)
+						tex_str += "\t\t\t\\subpart{} {}\n".format(point_str, line)
 					prev_indent_count = indent_count
 				else:
 					# remove // and strip
 					line = line.strip()[2:].strip()
 					# solution height
-					match = re.match(r"{\s*\d+\s*}", line)
+					match = re.match(r"{\s*[\d\.]+\s*}", line)
 					if match:
-						height = int(line[match.start()+1:match.end()-1])*20
-						height_str = "[{} pt]".format(height)
+						height = int(float(line[match.start()+1:match.end()-1])*16)-12
+						height_str = "{} pt".format(height)
 						line = line[match.end():]
 					else:
-						height_str = "[{} pt]".format(20*math.ceil(len(line)/75))
+						height_str = "{} pt".format(16*math.ceil(len(line)/75))
 					# solution tex
-					tab_str = "\t"*(indent_count+1)
-					tex_str += "{}\\begin{{solution}}{}\n".format(tab_str,
-						height_str if not "sheet" in self.ans_options else "")
-					tex_str += "{}{}\n".format(tab_str, line)
 					solutions.append((hierarchy.copy(), height_str, line))
-					tex_str += tab_str + "\\end{solution}\n"
+					if "sheet" not in self.ans_options:
+						tab_str = "\t"*(indent_count+2)
+						tex_str += "{}\\begin{{solution}}{}\n".format(tab_str, height_str) \
+								+ "{}{}\n".format(tab_str, line) \
+								+ tab_str + "\\end{solution}\n"
 			else:
 				tex_str += bang_to_tex(line)
 		# close any remaining subparts or parts environments
@@ -492,11 +494,11 @@ class ExamModule:
 		elif indent_change == -1:
 			tex_str += "\t\\end{parts}\n"
 		tex_str += "\\end{questions}\n"
-		# generate answers
-		if "sheet" in self.ans_options:
-			self.ans_str = self.gen_ans(None, solutions)
-		else:
-			self.ans_str = tex_str.replace("!newpage", "")
+		# generate answers, default values
+		self.ans_sheet_str = tex_str
+		self.ans_key_str = tex_str
+		# non default case
+		self.gen_ans(initial_qcount, solutions)
 		return tex_str
 
 	def text_tex(self, qcount):
@@ -556,18 +558,17 @@ class ExamModule:
 
 	def gen_ans(self, initial_qcount, solutions):
 		"""
-		Returns tex for answer sheet.
+		Generates module tex for answer sheet and module tex for answer key.
 
 		initial_qcount (int): the question number the previous module ended with.
 		solutions (list): contains solutions for this module. FRQ solutions are 3-tupled as
 			(hierarchy, hieght_str, solution_str).
 		"""
-		ans_str = ""
 		if self.mod_type in ["match", "tf", "mc"]:
-			ans_str += "\t\\raggedcolumns\n"
-			ans_str += "\t\\begin{multicols}{5}\n"
-			ans_str += "\t\\begin{enumerate}\n"
-			ans_str += "\t\\setcounter{{enumi}}{{{}}}\n".format(initial_qcount)
+			ans_str = "\t\\raggedcolumns\n" \
+					+ "\t\\begin{multicols}{5}\n" \
+					+ "\t\\begin{enumerate}\n" \
+					+ "\t\\setcounter{{enumi}}{{{}}}\n".format(initial_qcount)
 			for sol in solutions:
 				ans_str += "\t\\item \\choiceblank{{{}}}\n".format(sol)
 			ans_str += "\t\\end{enumerate}\n"
@@ -575,30 +576,79 @@ class ExamModule:
 			if len(solutions) % 5 != 0:
 				ans_str += "\t\\fixcolspacing\n"
 			ans_str += "\t\\end{multicols}\n"
+			# newpage option
+			if "break" in self.ans_options:
+				ans_str += "\t\\newpage\n"
+			# assign result
+			self.ans_key_str = ans_str
+			if "sheet" in self.ans_options:
+				self.ans_sheet_str = ans_str
 		elif self.mod_type == "frq":
-			for (hierarchy, height_str, sol) in solutions:
-				qnum = "{}.".format(hierarchy[0])
-				qpart = chr(hierarchy[1]+96)+"." if hierarchy[1]!=0 else ""
-				# convert to roman
-				qsubpart = ""
-				if hierarchy[2]!=0:
-					romans = [('x',  10), ('ix', 9), ('v',  5), ('iv', 4), ('i',  1)]
-					subpart_num = hierarchy[2]
-					for numeral, integer in romans:
-						while subpart_num >= integer:
-							qsubpart += numeral
-							subpart_num -= integer
-					qsubpart += "."
-				qnum += qpart + qsubpart
-				ans_str += "\t\\\\[5 pt]\n"
-				ans_str += "\t\\begin{minipage}{\\linewidth}\n"
-				ans_str += "\t\t\\par\\noindent {}\n".format(qnum)
-				ans_str += "\t\t\\begin{{solution}}{}\n".format(height_str)
-				ans_str += "\t\t\t{}\n".format(sol)
-				ans_str += "\t\t\\end{solution}\n"
-				ans_str += "\t\t\\par\\noindent\\hrulefill\n"
-				ans_str += "\t\\end{minipage}\n"
-			ans_str += "\t\\\\[10 pt]\n"
+			self.ans_key_str = self.gen_frq_ans(initial_qcount, solutions, sheet=False)
+			if "sheet" in self.ans_options:
+				self.ans_sheet_str = self.gen_frq_ans(initial_qcount, solutions, sheet=True)
+
+	def gen_frq_ans(self, initial_qcount, solutions, sheet):		
+		ans_str = ""
+		if "twocolumn" in self.ans_options:
+			ans_str += "\\setlength{\\columnsep}{0.40 in}\n" \
+					+ "\\setlength{\\columnseprule}{0.2 pt}\n" \
+					+ "\\begin{multicols*}{2}\n" \
+					+ "\\renewcommand{\\questionshook}{\\setlength{\\leftmargin}{0.15 in}}\n"
+		ans_str += "\t\\begin{questions}\n" \
+				+ "\t\\setcounter{{question}}{{{}}}\n".format(initial_qcount)
+		prev = [initial_qcount, 0, 0]
+		level = 0
+		ans_stubs = ["\\question", "\\part", "\\subpart"]
+		tab_stubs = ["\t", "\t\t", "\t\t\t"]
+		for (hierarchy, height_str, sol) in solutions:
+			# figure out how the hierarchy changed from previous q
+			diff = [hierarchy[i] - prev[i] for i in range(len(hierarchy))]
+			# highest level of hierarchy change
+			topmost_change_ind = 0 if diff[0]!=0 else (1 if diff[1]!=0 else 2)
+			# adding another question/part/subpart to an existing list
+			if topmost_change_ind == level:
+				# add the qps
+				ans_str += "{}{}\n".format(tab_stubs[level], ans_stubs[level])
+				# in the case that the new qps has subparts, need to start env and put in dummy qps
+				i = level + 1
+				while i<3 and hierarchy[i]!=0:
+					level = i;
+					ans_str += "{}\\begin{{{}s}}\n".format(tab_stubs[i], ans_stubs[i][1:])
+					ans_str += "{}{}\n".format(tab_stubs[i], ans_stubs[i])
+					i += 1
+			# ending a sublist, adding a new higher-level qps
+			elif topmost_change_ind < level:
+				# need to close existing environments, up to the necessary level
+				i = level
+				while i>topmost_change_ind:
+					ans_str += "{}\\end{{{}s}}\n".format(tab_stubs[i], ans_stubs[i][1:])
+					i -= 1;
+				# need to close existing environments, up to the necessary level
+				level = i;
+				ans_str += "{}{}\n".format(tab_stubs[i], ans_stubs[i])
+				i += 1
+				while i<3 and hierarchy[i]!=0:
+					level = i;
+					ans_str += "{}\\begin{{{}s}}\n".format(tab_stubs[i], ans_stubs[i][1:])
+					ans_str += "{}{}\n".format(tab_stubs[i], ans_stubs[i])
+					i += 1
+			# putting in the answer
+			if (sheet):
+				ans_str += "\t{}\\ \\vspace{{{}}}\n".format(tab_stubs[level], height_str)
+			else:
+				ans_str += "\t{}{}\n".format(tab_stubs[level], sol)
+			prev = hierarchy
+		# cleanup: close existing environments
+		while level>=0:
+			ans_str += "{}\\end{{{}s}}\n".format(tab_stubs[level], ans_stubs[level][1:])
+			level -= 1;
+		if "twocolumn" in self.ans_options:
+			ans_str += "\t\\end{multicols*}\n" \
+					+ "\\renewcommand{\\questionshook}{}\n"
+		# newpage option
+		if "break" in self.ans_options:
+			ans_str += "\t\\newpage\n"
 		return ans_str
 
 
@@ -748,22 +798,16 @@ class ExamSection:
 
 		ans_key (bool): True if we're generating the answer key (as opposed to sheet).
 		"""
+		# don't want to generate answer key for header or cover
+		if self.sec_type != "section":
+			return ""
 		ans_str = ""
-		title_tex = ""
-		# prevent duplicate titles in a separated question set
-		untitled = True
 		for module in self.modules:
-			if module.mod_type == "title":
-				title_tex = module.title_tex(qcount=None)
-			elif module.mod_type in ["match", "tf", "frq", "mc"]:
-				if ans_key or "sheet" in module.ans_options:
-					if untitled:
-						# newpage if copying section straight from exam
-						if not "sheet" in module.ans_options:
-							ans_str += "\\newpage\n"
-						untitled = False
-						ans_str += title_tex
-					ans_str += module.ans_str
+			if module.mod_type in ["match", "tf", "frq", "mc"]:
+				if ans_key:
+					ans_str += module.ans_key_str
+				elif "sheet" in module.ans_options:
+					ans_str += module.ans_sheet_str
 		return ans_str
 
 
@@ -868,12 +912,14 @@ class Exam:
 		tex_str += "\\end{document}"
 		return tex_str
 
-	def ans_tex(self):
+	def ans_key_tex(self):
 		"""Returns answer key tex."""
-		ans_str = self.template["preamble"] + "\n"
-		ans_str += self.template["answerkey"] + "\n"
+		# ans_str = self.template["preamble"] + "\n"
+		# ans_str += self.template["answerkey"] + "\n"
+		ans_str = self.exam_preamble()
 		ans_str += "\\printanswers" + "\n"
 		ans_str += "\n\\begin{document}\n"
+		ans_str += "\\section*{Answer Key}\n"
 		for section in self.sections:
 			ans_str += section.ans_tex(True)
 		ans_str += "\\end{document}"
@@ -917,7 +963,7 @@ def generate_tex(filename):
 	# make sure everything is set up correctly
 	exam.verify_sections()
 
-	return exam.to_tex(), exam.ans_tex()
+	return exam.to_tex(), exam.ans_key_tex()
 
 def main():
 	# existence of argument is checked in bash script
