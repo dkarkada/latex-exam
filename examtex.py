@@ -5,7 +5,7 @@ from random import shuffle
 
 bang_pattern = r"\s*!(newpage|options|ans-options|gap|img|pkg)"
 mc_bang_pattern = r"\s*!(newcol|txt|hrule)"
-mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|match|tf|mc|frq|text|latex|table)\]"
+mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|match|tf|mc|frq|text|latex|table)\]"
 sec_pattern = r"(?i)\s*\[(header|cover|section)\]"
 
 def compile_error(err):
@@ -191,19 +191,6 @@ class ExamModule:
 			if line not in bangs:				
 				line = make_latex_safe(line)
 				tex_str += "\\par\\noindent \\textbf{{\\large {}}}\n".format(line)
-			else:
-				tex_str += bang_to_tex(line)
-		return tex_str
-
-	def instructions_tex(self, qcount):
-		"""Client should use to_tex()."""
-		content = self.content
-		bangs = self.bangs
-		tex_str = ""
-		for line in self.content:
-			if line not in bangs:
-				line = make_latex_safe(line)
-				tex_str += "\\par\\noindent {}\n".format(line)
 			else:
 				tex_str += bang_to_tex(line)
 		return tex_str
@@ -506,12 +493,14 @@ class ExamModule:
 		content = self.content
 		bangs = self.bangs
 		tex_str = ""
+		noindent = "\\noindent"
 		for line in content:
 			if line not in bangs:
 				line = make_latex_safe(line)
 				line = re.sub(r"\\i\s*{", r"\\textit{", line)
 				line = re.sub(r"\\b\s*{", r"\\textbf{", line)
-				tex_str += "\t\\par {}\n".format(line)
+				tex_str += "\t\\par{} {}\n".format(noindent, line)
+				noindent = "";
 			else:
 				tex_str += bang_to_tex(line)				
 		return tex_str
@@ -703,9 +692,9 @@ class ExamSection:
 		"""Client should use to_tex()."""
 		# prevent nesting of center environments
 		centered = False
-		# top/bottom margins for each module
+		# top/bottom margins for each module, inches
 		spacings = {"title": "0.10", "subtitle": "0.05", "author": "0.05",\
-					"info": "0.15", "instructions": "0.15", "text":"0.10", "latex":"0.00"}
+					"info": "0.15", "text":"0.10", "latex":"0.00", "table":"0.05"}
 		tex_str = "\\begin{coverpages}\n"
 		# section bangs
 		for line in self.content:
@@ -719,50 +708,50 @@ class ExamSection:
 			if mt not in spacings:
 				compile_error("Invalid module type in Cover: " + mt)
 			# centering
-			if mt in ["title", "subtitle", "author", "info"] and not centered:
+			centered_modules = ["title", "subtitle", "author", "info"]
+			if mt in centered_modules and not centered:
 				tex_str += "\t\\begin{center}\n"
 				centered = True
-			elif mt not in ["title", "subtitle", "author", "info"] and centered:
+			elif mt not in centered_modules and centered:
 				tex_str += "\t\\end{center}\n"
 				centered = False
 			# spacing
 			spacing = spacings[mt]
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
 			# module content
-			if mt in ["info", "author"]:
-				tex_str += "\t\t\\par\n"
-				tex_str += "\t\t\\def\\arraystretch{2}\\tabcolsep=3pt\n\t\t\\begin{tabular}{r r}\n"
-			if mt == "author":
-				tex_str += "\t\t\t\\textbf{{Written by:}}\n"
-			for line in content:
-				if line not in bangs:
-					line = make_latex_safe(line)
-					if mt == "title":
-						tex_str += "\t\t\\par\\noindent\\textbf{{\\Huge  {}}}\n".format(line) 
-					if mt == "subtitle":
-						tex_str += "\t\t\\par\\noindent\\textbf{{\\large {}}}\n".format(line)
-					if mt == "author":
-						# Bold author's name, italicize author contact info
-						match = re.search(",", line)
-						if match:
-							splt = match.end()
-							author = line[:splt-1]
-							author_info = line[splt:]
-							tex_str += "\t\t\t & \\textbf{{{}}}, \\textit{{{}}} \\\\\n".format(
-								author, author_info)
-						else:
-							tex_str += "\t\t\t & \\textbf{{{}}} \\\\\n".format(content[0])
-					if mt == "info":
-						tex_str += "\t\t\t\\textbf{{{}:}} & \\makebox[4in]{{\\hrulefill}} \\\\\n".format(
-							line.strip())
-					if mt in ["instructions", "text"]:
-						tex_str += "\t\\par {}\n".format(line.strip())
-					if mt == "latex":
-						tex_str += line + "\n"
-				else:
-					tex_str += bang_to_tex(line, centered=True)
-			if mt in ["info", "author"]:
-				tex_str += "\t\t\\end{tabular}\n"
+			if mt in ["text", "latex", "table"]:
+				tex_str += mod.to_tex(qcount=None);
+			else:
+				if mt in ["info", "author"]:
+					tex_str += "\t\t\\par\n"
+					tex_str += "\t\t\\def\\arraystretch{2}\\tabcolsep=3pt\n\t\t\\begin{tabular}{r r}\n"
+				if mt == "author":
+					tex_str += "\t\t\t\\textbf{{Written by:}}\n"
+				for line in content:
+					if line not in bangs:
+						line = make_latex_safe(line)
+						if mt == "title":
+							tex_str += "\t\t\\par\\noindent\\textbf{{\\Huge  {}}}\n".format(line) 
+						if mt == "subtitle":
+							tex_str += "\t\t\\par\\noindent\\textbf{{\\large {}}}\n".format(line)
+						if mt == "author":
+							# Bold author's name, italicize author contact info
+							match = re.search(",", line)
+							if match:
+								splt = match.end()
+								author = line[:splt-1]
+								author_info = line[splt:]
+								tex_str += "\t\t\t & \\textbf{{{}}}, \\textit{{{}}} \\\\\n".format(
+									author, author_info)
+							else:
+								tex_str += "\t\t\t & \\textbf{{{}}} \\\\\n".format(content[0])
+						if mt == "info":
+							tex_str += "\t\t\t\\textbf{{{}:}} & \\makebox[4in]{{\\hrulefill}} \\\\\n".format(
+								line.strip())
+					else:
+						tex_str += bang_to_tex(line, centered=True)
+				if mt in ["info", "author"]:
+					tex_str += "\t\t\\end{tabular}\n"
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
 		# close centering after last module
 		if centered:
