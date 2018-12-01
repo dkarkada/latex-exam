@@ -38,8 +38,8 @@ if [ "$err" != "" ]; then
 # compile pdf from tex
 elif [ $to_pdf = 'true' -a "$err" = "" ]; then
 	cd $cwd
-	latexmk -pdf -f -quiet "${1%.*}-EXAM.tex"
-	latexmk -pdf -f -quiet "${1%.*}-KEY.tex"
+	latexmk -pdf -quiet "${1%.*}-EXAM.tex"
+	latexmk -pdf -quiet "${1%.*}-KEY.tex"
 	if [ $cleanup = 'true' ]; then
 		latexmk -c
 	fi
