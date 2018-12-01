@@ -50,5 +50,5 @@ for the current file.
 ## Making `.exam` files
 A sample exam is provided in `tutorial/sample.exam`.  Exams are organized into sections, each containing modules. Sections and modules are headed by a tag: `[Section]` represents the start of a new section, and `[FRQ]` represents the start of a module for free-response questions.
 
-A full tour of the expected `.exam` file format can be found in the tutorial files.
+A full tour of the expected `.exam` file format can be found in the documentation and tutorial.
 
