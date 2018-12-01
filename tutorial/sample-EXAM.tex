@@ -5,6 +5,7 @@
 \usepackage{siunitx}
 \usepackage{graphicx}
 \usepackage{multicol}
+\usepackage{soul}
 \usepackage{etoolbox}
 \usepackage{intcalc}
 \usepackage{framed}
@@ -58,7 +59,7 @@
 		\vspace{0.10 in}
 		\par\noindent\textbf{\Huge   Title}
 		\vspace{0.5 in}
-		\vspace{0.05 in}
+		\par\noindent
 		\par\noindent
 				\includegraphics[width=.7\textwidth]{images/tong.jpg}
 		\vspace{0.05 in}
@@ -80,7 +81,12 @@
 		\vspace{0.15 in}
 	\begin{center}
 		\vspace{0.05 in}
-		\par\noindent\textbf{Written by:  Dhruva Karkada}, \textit{ dkarkada@gmail.com}
+		\par
+		\def\arraystretch{2}\tabcolsep=3pt
+		\begin{tabular}{r r}
+			\textbf{{Written by:}}
+			 & \textbf{ Dhruva Karkada}, \textit{ dkarkada@gmail.com} \\
+		\end{tabular}
 		\vspace{0.05 in}
 	\end{center}
 \end{coverpages}
@@ -103,17 +109,17 @@
 \end{wordbank}
 \begin{questions}
 \setcounter{question}{0}
-	\question\match{J}{ans=sheet will create a separate answer sheet at the end}
-	\question\match{F}{This is question 6}
-	\question\match{A}{This is question 1}
-	\question\match{E}{This is question 5}
-	\question\match{C}{This is question 3}
-	\question\match{G}{are sorted alphabetically, while}
-	\question\match{D}{This is question 4}
-	\question\match{I}{Will automatically shuffle}
-	\question\match{B}{This is question 2}
 	\question\match{H}{No dedicated answer sheet will be created}
 	\question\match{G}{which are used more than once will only appear once in the wordbox}
+	\question\match{I}{Will automatically shuffle}
+	\question\match{C}{This is question 3}
+	\question\match{A}{This is question 1}
+	\question\match{F}{This is question 6}
+	\question\match{G}{are sorted alphabetically, while}
+	\question\match{J}{ans=sheet will create a separate answer sheet at the end}
+	\question\match{E}{This is question 5}
+	\question\match{D}{This is question 4}
+	\question\match{B}{This is question 2}
 	\question\match{K}{You include `noshuffle' as an option}
 \end{questions}
 
@@ -123,7 +129,7 @@
 \setcounter{question}{12}
 	\question\match{T}{A new section will create a page break.}
 	\question\match{T}{The true/false section is just like the matching, except no word bank is created}
-	\question\match{T}{And instead of lettering the choices in the word bank, the answer is either `T' or `F'}
+	\question\match{T}{And instead of lettering the choices in the word bank, the answer is either `T' or 'F'}
 	\question\match{F}{Mars is blue}
 	\question\match{F}{America was founded in 1634}
 	\question\match{T}{This \LaTeX\ tool is really cool and useful}
@@ -145,9 +151,9 @@
 	\end{choices}
 	\question[2] Multiple choice questions
 	\begin{choices}
+		\choice z
+		\choice z
 		\CorrectChoice automatically have answers shuffled
-		\choice z
-		\choice z
 		\choice z
 	\end{choices}
 	\question[2] Unless you mark the correct answer
@@ -159,9 +165,9 @@
 	\end{choices}
 	\question[2] For shuffled questions, put the
 	\begin{choices}
-		\choice followed by the bogus answers
 		\choice z
 		\CorrectChoice correct answer choice first,
+		\choice followed by the bogus answers
 	\end{choices}
 	\question[2] The spacing of MC questions depends
 	\begin{choices}
@@ -179,8 +185,8 @@
 	\end{choices}
 	\question[2] Better to overestimate than underestimate
 	\begin{choices}
-		\choice z
 		\CorrectChoice or else you might get some funky formatting
+		\choice z
 		\choice z
 	\end{choices}
 	\vfill\null\columnbreak
@@ -204,56 +210,56 @@
 \par\noindent \textbf{\large  Free Response}
 \par\noindent  Write legibly
 \begin{questions}
-\setcounter{question}{27}
-\question A question can have parts and subparts
+	\setcounter{question}{27}
+	\question A question can have parts and subparts
 	\begin{parts}
-	\part Here is a part
-		\begin{solution}[20 pt]
-		Here is its solution
-		\end{solution}
-	\part Here is another part
+		\part Here is a part
+			\begin{solution}16 pt
+			Here is its solution
+			\end{solution}
+		\part Here is another part
 		\begin{subparts}
-		\subpart Its first subpart
-			\begin{solution}[20 pt]
-			and respective solution
-			\end{solution}
-		\subpart Next subpart
-			\begin{solution}[20 pt]
-			and respective solution
-			\end{solution}
+			\subpart Its first subpart
+				\begin{solution}16 pt
+				and respective solution
+				\end{solution}
+			\subpart Next subpart
+				\begin{solution}16 pt
+				and respective solution
+				\end{solution}
 		\end{subparts}
-	\part Last part
-		\begin{solution}[20 pt]
+		\part Last part
+			\begin{solution}16 pt
+			solution
+			\end{solution}
+	\end{parts}
+	\question You can put math here: $y=mx+b$ or alternatively \[i\hbar \frac{\partial \Psi}{\partial t} = -\frac{\hbar^2}{2m}\frac{\partial^2 \Psi}{\partial x^2} + V \Psi\] if you like this better.
+		\begin{solution}16 pt
+		solution can have $math$ as well
+		\end{solution}
+	\question You can include commands from packages imported in the header. These come from the physics package: $\laplacian\div\grad\dv{x}$
+		\begin{solution}16 pt
+		and this comes from the hyperref package: \url{google.com}
+		\end{solution}
+	\question Quotation ``marks'' and \% symbols are preserved
+		\begin{solution}16 pt
 		solution
 		\end{solution}
-	\end{parts}
-\question You can put math here: $y=mx+b$ or alternatively \[i\hbar \frac{\partial \Psi}{\partial t} = -\frac{\hbar^2}{2m}\frac{\partial^2 \Psi}{\partial x^2} + V \Psi\] if you like this better.
-	\begin{solution}[20 pt]
-	solution can have $math$ as well
-	\end{solution}
-\question You can include commands from packages imported in the header. These come from the physics package: $\laplacian\div\grad\dv{x}$
-	\begin{solution}[20 pt]
-	and this comes from the hyperref package: \url{google.com}
-	\end{solution}
-\question Quotation ``marks'' and \% symbols are preserved
-	\begin{solution}[20 pt]
-	solution
-	\end{solution}
-\question[3]  Indicate point values by preceding questions with curly bracketed numbers
+	\question[3]  Indicate point values by preceding questions with curly bracketed numbers
 	\begin{parts}
-	\part question1
-		\begin{solution}[20 pt]
-		 And the number of lines the solution will take up
-		\end{solution}
-	\part question2
-		\begin{solution}[100 pt]
-		If solution size is not explicitly given, it`ll try to guess based on the solution you've written. If you write a really long solution, then it will try to allocate more space for the student to match. But sometimes you want to write a long, detailed solution even though the expected solution may not be as long, so it's better to specify the expected number of lines.
-		\end{solution}
+		\part question1
+			\begin{solution}4 pt
+			 And the number of lines the solution will take up
+			\end{solution}
+		\part question2
+			\begin{solution}80 pt
+			If solution size is not explicitly given, it'll try to guess based on the solution you've written. If you write a really long solution, then it will try to allocate more space for the student to match. But sometimes you want to write a long, detailed solution even though the expected solution may not be as long, so it's better to specify the expected number of lines.
+			\end{solution}
 	\end{parts}
-\question You can also directly put some \LaTeX\ commands in here
-	\begin{solution}[20 pt]
-	and they \textit{should} work
-	\end{solution}
+	\question You can also directly put some \LaTeX\ commands in here
+		\begin{solution}16 pt
+		and they \textit{should} work
+		\end{solution}
 		\newpage
 \end{questions}
 	\par \noindent\textbf{sss}
@@ -266,30 +272,30 @@
 	\item item 2
 \end{itemize}
 \begin{questions}
-\setcounter{question}{33}
-\question Back to some sweet
+	\setcounter{question}{33}
+	\question Back to some sweet
 	\begin{parts}
-	\part free
-		\begin{solution}[20 pt]
-		free
-		\end{solution}
-	\part response
-		\begin{solution}[20 pt]
-		response
-		\end{solution}
-	\part questions!
-		\begin{solution}[20 pt]
-		questions
-		\end{solution}
+		\part free
+			\begin{solution}16 pt
+			free
+			\end{solution}
+		\part response
+			\begin{solution}16 pt
+			response
+			\end{solution}
+		\part questions!
+			\begin{solution}16 pt
+			questions
+			\end{solution}
 	\end{parts}
-\question By default, no answer sheet is generated at the end of the exam. You must use the ans option to specify if you want an answer sheet for a given question module
-	\begin{solution}[20 pt]
-	ok
-	\end{solution}
-\question But of course, every question module shows up in the answer key
-	\begin{solution}[20 pt]
-	of course
-	\end{solution}
+	\question By default, no answer sheet is generated at the end of the exam. You must use the ans option to specify if you want an answer sheet for a given question module
+		\begin{solution}16 pt
+		ok
+		\end{solution}
+	\question But of course, every question module shows up in the answer key
+		\begin{solution}16 pt
+		of course
+		\end{solution}
 \end{questions}
 \begin{center}
 \def\arraystretch{1.25}
@@ -305,43 +311,4 @@
 \hline
 \end{tabular}
 \end{center}
-\newpage
-\section*{Answer Sheet}
-\par\noindent \textbf{\large  Matching}
-	\raggedcolumns
-	\begin{multicols}{5}
-	\begin{enumerate}
-	\setcounter{enumi}{0}
-	\item \choiceblank{J}
-	\item \choiceblank{F}
-	\item \choiceblank{A}
-	\item \choiceblank{E}
-	\item \choiceblank{C}
-	\item \choiceblank{G}
-	\item \choiceblank{D}
-	\item \choiceblank{I}
-	\item \choiceblank{B}
-	\item \choiceblank{H}
-	\item \choiceblank{G}
-	\item \choiceblank{K}
-	\end{enumerate}
-	\fixcolspacing
-	\end{multicols}
-\par\noindent \textbf{\large  The title is Multiple Choice}
-	\raggedcolumns
-	\begin{multicols}{5}
-	\begin{enumerate}
-	\setcounter{enumi}{18}
-	\item \choiceblank{C}
-	\item \choiceblank{A}
-	\item \choiceblank{A}
-	\item \choiceblank{C}
-	\item \choiceblank{B}
-	\item \choiceblank{B}
-	\item \choiceblank{B}
-	\item \choiceblank{A}
-	\item \choiceblank{A}
-	\end{enumerate}
-	\fixcolspacing
-	\end{multicols}
 \end{document}
