@@ -28,6 +28,9 @@ def make_latex_safe(line):
 		repl = "`{}'".format(match.group(0)[2:-2])
 		line = line[:match.start()+1] + repl + line[match.end()-1:]
 		match = re.search("\\s'[^']+'\\s", line)
+	# custom bold and italics syntax
+	line = re.sub(r"\\i\s*{", r"\\textit{", line)
+	line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 	return line
 
 def bang_args(line):
@@ -49,7 +52,6 @@ def bang_to_tex(line, centered=False):
 		if not args:
 			compile_error("Expected args for img.")
 		tex_str += "\t\t\\par\\noindent\n"
-		# tex_str += "\t\t\\vspace{0.05 in}\n"
 		if len(args) == 1:
 			img_str = "\t\t\\includegraphics{{{}}}\n".format(args[0])
 		else:
@@ -60,9 +62,10 @@ def bang_to_tex(line, centered=False):
 			tex_str += img_str
 			tex_str += "\t\\end{center}\n"
 		else:
+			tex_str += "\t\t\\vspace{0.05 in}\n"
 			tex_str += "\t\t\\par\\noindent\n"
 			tex_str += "\t\t" + img_str							
-		tex_str += "\t\t\\vspace{0.05 in}\n"
+			tex_str += "\t\t\\vspace{0.05 in}\n"
 	if re.match(r"\s*!newpage", line):
 		tex_str += "\t\t\\newpage\n"
 	if re.match(r"\s*!gap", line):
@@ -93,26 +96,24 @@ def bang_to_tex(line, centered=False):
 def update_options(bang, options, ans_options):
 	"""Parses an options bang and updates the options dict."""
 	args = bang_args(bang)
-	if re.match(r"\s*!options", bang):		
+	opt = None
+	if re.match(r"\s*!options", bang):
 		if not args:
 			compile_error("Expected args for options.")
-		for arg in args:
-			# check if option has a value vs. is a flag
-			match = re.search("=", arg)
-			if match:
-				options[arg[:match.start()]] = arg[match.end():]
-			else:
-				options[arg] = ''
+		opt = options
 	elif re.match(r"\s*!ans-options", bang):		
 		if not args:
 			compile_error("Expected args for ans-options.")
-		for arg in args:
-			# check if ans-option has a value vs. is a flag
-			match = re.search("=", arg)
-			if match:
-				ans_options[arg[:match.start()]] = arg[match.end():]
-			else:
-				ans_options[arg] = ''
+		opt = ans_options
+	else:
+		return
+	for arg in args:
+		# check if option has a value vs. is a flag
+		match = re.search("=", arg)
+		if match:
+			opt[arg[:match.start()]] = arg[match.end():]
+		else:
+			opt[arg] = ''
 
 class MCQuestion:
 
@@ -250,13 +251,11 @@ class ExamModule:
 			else:
 				ans_letter = chr(65 + ans_list.index(ans))
 			solutions.append(ans_letter)
-			tex_str += "\t\\question{}\\match{{{}}}{{{}}}\n".format(point_str, ans_letter, question)
+			if not re.match(r"\s*//", question):
+				tex_str += "\t\\question{}\\match{{{}}}{{{}}}\n".format(point_str, ans_letter, question)
 			qcount[0] += 1
 		tex_str += "\\end{questions}\n"
-		# generate answers, default values
-		self.ans_sheet_str = tex_str
-		self.ans_key_str = tex_str
-		# non default case
+		# generate answers
 		self.gen_ans(initial_qcount, solutions)
 		return tex_str
 
@@ -379,10 +378,7 @@ class ExamModule:
 			tex_str += "\\end{multicols*}\n"
 			tex_str += "\\renewcommand{\\choiceshook}{}\n"
 			tex_str += "\\renewcommand{\\questionshook}{}\n"
-		# generate answers, default values
-		self.ans_sheet_str = tex_str
-		self.ans_key_str = tex_str
-		# non default case
+		# generate answers
 		self.gen_ans(initial_qcount, solutions)
 		return tex_str
 
@@ -468,7 +464,7 @@ class ExamModule:
 					solutions.append((hierarchy.copy(), height_str, line))
 					if "sheet" not in self.ans_options:
 						tab_str = "\t"*(indent_count+2)
-						tex_str += "{}\\begin{{solution}}{}\n".format(tab_str, height_str) \
+						tex_str += "{}\\begin{{solution}}[{}]\n".format(tab_str, height_str) \
 								+ "{}{}\n".format(tab_str, line) \
 								+ tab_str + "\\end{solution}\n"
 			else:
@@ -481,10 +477,7 @@ class ExamModule:
 		elif indent_change == -1:
 			tex_str += "\t\\end{parts}\n"
 		tex_str += "\\end{questions}\n"
-		# generate answers, default values
-		self.ans_sheet_str = tex_str
-		self.ans_key_str = tex_str
-		# non default case
+		# generate answers
 		self.gen_ans(initial_qcount, solutions)
 		return tex_str
 
@@ -497,8 +490,6 @@ class ExamModule:
 		for line in content:
 			if line not in bangs:
 				line = make_latex_safe(line)
-				line = re.sub(r"\\i\s*{", r"\\textit{", line)
-				line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 				tex_str += "\t\\par{} {}\n".format(noindent, line)
 				noindent = "";
 			else:
@@ -531,8 +522,6 @@ class ExamModule:
 					tex_str += "\t\\hline\n"
 				else:
 					line = make_latex_safe(line)
-					line = re.sub(r"\\i\s*{", r"\\textit{", line)
-					line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 					line = line.split("\t")
 					line = [tdata for tdata in line if tdata != ""]
 					line = " & ".join(line) + "\\\\"
