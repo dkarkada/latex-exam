@@ -24,7 +24,7 @@ fi
 # save current directory
 cwd=$(pwd)
 # change directory to source
-cd "$(dirname "$(readlink -f "$0")")"
+cd "$(dirname "$(greadlink -f "$0")")"
 # generate tex
 if [[ "$1" = /* ]]; then
 	# absolute path
@@ -37,11 +37,12 @@ if [ "$err" != "" ]; then
 	echo "$err"
 # compile pdf from tex
 elif [ $to_pdf = 'true' -a "$err" = "" ]; then
-  cd "$(dirname "$1")"
+	cd $cwd
 	latexmk -pdf -quiet "${1%.*}-EXAM.tex"
 	latexmk -pdf -quiet "${1%.*}-KEY.tex"
 	if [ $cleanup = 'true' ]; then
 		latexmk -c
 	fi
-	evince "${1%.*}-EXAM.pdf"
+	# Add pdf viewer of choice here or something
+  # evince "${1%.*}-EXAM.pdf"
 fi
