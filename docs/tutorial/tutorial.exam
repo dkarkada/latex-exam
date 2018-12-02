@@ -1,0 +1,170 @@
+[Header]
+!pkg {physics, hyperref}
+Class
+Exam title
+Student ID
+
+[Cover]
+[Subtitle] Subtitle
+[Title] Title
+
+!gap {0.5 in}
+!img {images/tong.jpg, .7\textwidth}
+!gap {0.5 in}
+
+[Info]
+Student Name
+Date
+Any other info
+
+[Text]
+The order of modules within sections roughly corresponds to the order in which they're generated as tex. For example, putting the subtitle module before the title module results in the subtitle being rendered above.
+Throughout the exam, you can use the following bangs: gap (which inserts vertical space), img (which inserts an image with the given filename and renders it at the given width), and newpage (self explanatory). Other bangs are specific to certain modules.
+
+[Author] Dhruva Karkada, dkarkada@gmail.com
+
+[Section]
+[Title] Matching
+[Text] 2 points each. Each choice will be used; some more than once.
+[Match]
+Answer 1:: This is question 1
+Answer 2:: This is question 2
+Answer 3:: This is question 3
+Answer 4:: This is question 4
+Answer 5:: This is question 5
+Answer 6:: This is question 6
+Answers:: are sorted alphabetically, while
+Questions:: Will automatically shuffle
+Unless:: You include 'noshuffle' as an option
+The option:: ans=sheet will create a separate answer sheet at the end
+Otherwise:: No dedicated answer sheet will be created
+Answers:: which are used more than once will only appear once in the wordbox
+Extra ans:://
+
+[Section]
+[Title] True/false questions
+[TF]
+!options {noshuffle}
+T:: A new section will create a page break.
+T:: The true/false section is just like the matching, except no word bank is created
+T:: And instead of lettering the choices in the word bank, the answer is either 'T' or 'F'
+F:: Mars is blue
+F:: America was founded in 1634
+T:: This \LaTeX\ tool is really cool and useful
+
+[Section]
+[Title] The title is Multiple Choice
+[MC]
+!options {intro-height=30, twocolumn, qworth=2}
+!ans-options {sheet}
+New sections automatically
+	Create a pagebreak
+	z
+	z
+Multiple choice questions
+	automatically have answers shuffled
+	z
+	z
+	z
+Unless you mark the correct answer
+	with this symbol at the end: {C}
+	Then the answer choice order
+	will be
+	preserved
+For shuffled questions, put the 
+	correct answer choice first,
+	followed by the bogus answers
+	z
+The spacing of MC questions depends
+	on the available space on the page
+	which depends on how much instructions you wrote. {C}
+So do me a favor and estimate the height taken up by the
+	title and instructions
+	measured in units of pt {C}
+	and include that as the option "intro-height"
+	z
+	z
+	z
+Better to overestimate than underestimate
+	or else you might get some funky formatting
+	z
+	z
+The option "twocolumn" does what you think it does
+	z
+	z
+	z
+The qworth option for MC and matching modules will print the pre-determined point-value
+	for all questions. {C}
+	To print point values for FRQ, see next section
+
+[Section]
+[Title] Free Response
+[Text] Write legibly
+[FRQ]
+!ans-options {sheet}
+A question can have parts and subparts
+	Here is a part
+		// Here is its solution
+	Here is another part
+		Its first subpart
+			// and respective solution
+		Next subpart
+			// and respective solution
+	Last part
+		// solution
+*
+	This question has no high-level question
+		// nice
+	It only shows these two question parts
+		// ok
+You can put math here: $y=mx+b$ or alternatively \[i\hbar \frac{\partial \Psi}{\partial t} = -\frac{\hbar^2}{2m}\frac{\partial^2 \Psi}{\partial x^2} + V \Psi\] if you like this better.
+	// solution can have $math$ as well
+You can include commands from packages imported in the header. These come from the physics package: $\laplacian\div\grad\dv{x}$
+	// and this comes from the hyperref package: \url{google.com}
+Quotation "marks" and % symbols are preserved
+	// solution
+{3} Indicate point values by preceding questions with curly bracketed numbers
+	question1
+		// {1} And the number of lines the solution will take up
+	question2
+		// If solution size is not explicitly given, it'll try to guess based on the solution you've written. If you write a really long solution, then it will try to allocate more space for the student to match. But sometimes you want to write a long, detailed solution even though the expected solution may not be as long, so it's better to specify the expected number of lines.
+You can also directly put some \LaTeX\ commands in here
+	// and they \textit{should} work
+
+!newpage
+[Text]
+\noindent\textbf{sss}
+\par\noindent Lorem ipsum blah blah
+
+[Latex]
+\\ [.2 in]
+\par\noindent If you want to insert your own \LaTeX\ for whatever reason, you can do it here.
+\par
+\begin{itemize}
+	\item item 1
+	\item item 2
+\end{itemize}
+
+[FRQ]
+Back to some sweet
+	free
+		// {2} free
+	response
+		// {2} response
+	questions!
+		// {2} questions
+By default, no answer sheet is generated at the end of the exam. You must use the ans option to specify if you want an answer sheet for a given question module
+	// {3} ok
+But of course, every question module shows up in the answer key
+	// {3} of course
+
+[Table]
+!options {pattern=c|c, linespace=1.25, boxed}
+
+\b{Age}		\b{Height} 
+----------------
+11		5'2"
+13		5'3"
+14		5'6"
+16		5'8"
+18		5'9"

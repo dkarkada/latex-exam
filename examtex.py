@@ -5,7 +5,7 @@ from random import shuffle
 
 bang_pattern = r"\s*!(newpage|options|ans-options|gap|img|pkg)"
 mc_bang_pattern = r"\s*!(newcol|txt|hrule)"
-mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|instructions|match|tf|mc|frq|text|latex|table)\]"
+mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|match|tf|mc|frq|text|latex|table)\]"
 sec_pattern = r"(?i)\s*\[(header|cover|section)\]"
 
 def compile_error(err):
@@ -28,6 +28,9 @@ def make_latex_safe(line):
 		repl = "`{}'".format(match.group(0)[2:-2])
 		line = line[:match.start()+1] + repl + line[match.end()-1:]
 		match = re.search("\\s'[^']+'\\s", line)
+	# custom bold and italics syntax
+	line = re.sub(r"\\i\s*{", r"\\textit{", line)
+	line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 	return line
 
 def bang_args(line):
@@ -49,7 +52,6 @@ def bang_to_tex(line, centered=False):
 		if not args:
 			compile_error("Expected args for img.")
 		tex_str += "\t\t\\par\\noindent\n"
-		# tex_str += "\t\t\\vspace{0.05 in}\n"
 		if len(args) == 1:
 			img_str = "\t\t\\includegraphics{{{}}}\n".format(args[0])
 		else:
@@ -60,9 +62,10 @@ def bang_to_tex(line, centered=False):
 			tex_str += img_str
 			tex_str += "\t\\end{center}\n"
 		else:
+			tex_str += "\t\t\\vspace{0.05 in}\n"
 			tex_str += "\t\t\\par\\noindent\n"
 			tex_str += "\t\t" + img_str							
-		tex_str += "\t\t\\vspace{0.05 in}\n"
+			tex_str += "\t\t\\vspace{0.05 in}\n"
 	if re.match(r"\s*!newpage", line):
 		tex_str += "\t\t\\newpage\n"
 	if re.match(r"\s*!gap", line):
@@ -93,26 +96,24 @@ def bang_to_tex(line, centered=False):
 def update_options(bang, options, ans_options):
 	"""Parses an options bang and updates the options dict."""
 	args = bang_args(bang)
-	if re.match(r"\s*!options", bang):		
+	opt = None
+	if re.match(r"\s*!options", bang):
 		if not args:
 			compile_error("Expected args for options.")
-		for arg in args:
-			# check if option has a value vs. is a flag
-			match = re.search("=", arg)
-			if match:
-				options[arg[:match.start()]] = arg[match.end():]
-			else:
-				options[arg] = ''
+		opt = options
 	elif re.match(r"\s*!ans-options", bang):		
 		if not args:
 			compile_error("Expected args for ans-options.")
-		for arg in args:
-			# check if ans-option has a value vs. is a flag
-			match = re.search("=", arg)
-			if match:
-				ans_options[arg[:match.start()]] = arg[match.end():]
-			else:
-				ans_options[arg] = ''
+		opt = ans_options
+	else:
+		return
+	for arg in args:
+		# check if option has a value vs. is a flag
+		match = re.search("=", arg)
+		if match:
+			opt[arg[:match.start()]] = arg[match.end():]
+		else:
+			opt[arg] = ''
 
 class MCQuestion:
 
@@ -195,19 +196,6 @@ class ExamModule:
 				tex_str += bang_to_tex(line)
 		return tex_str
 
-	def instructions_tex(self, qcount):
-		"""Client should use to_tex()."""
-		content = self.content
-		bangs = self.bangs
-		tex_str = ""
-		for line in self.content:
-			if line not in bangs:
-				line = make_latex_safe(line)
-				tex_str += "\\par\\noindent {}\n".format(line)
-			else:
-				tex_str += bang_to_tex(line)
-		return tex_str
-
 	def match_tex(self, qcount):
 		return self.match_tf_tex(qcount, is_tf=False)		
 
@@ -263,13 +251,11 @@ class ExamModule:
 			else:
 				ans_letter = chr(65 + ans_list.index(ans))
 			solutions.append(ans_letter)
-			tex_str += "\t\\question{}\\match{{{}}}{{{}}}\n".format(point_str, ans_letter, question)
+			if not re.match(r"\s*//", question):
+				tex_str += "\t\\question{}\\match{{{}}}{{{}}}\n".format(point_str, ans_letter, question)
 			qcount[0] += 1
 		tex_str += "\\end{questions}\n"
-		# generate answers, default values
-		self.ans_sheet_str = tex_str
-		self.ans_key_str = tex_str
-		# non default case
+		# generate answers
 		self.gen_ans(initial_qcount, solutions)
 		return tex_str
 
@@ -392,10 +378,7 @@ class ExamModule:
 			tex_str += "\\end{multicols*}\n"
 			tex_str += "\\renewcommand{\\choiceshook}{}\n"
 			tex_str += "\\renewcommand{\\questionshook}{}\n"
-		# generate answers, default values
-		self.ans_sheet_str = tex_str
-		self.ans_key_str = tex_str
-		# non default case
+		# generate answers
 		self.gen_ans(initial_qcount, solutions)
 		return tex_str
 
@@ -481,7 +464,7 @@ class ExamModule:
 					solutions.append((hierarchy.copy(), height_str, line))
 					if "sheet" not in self.ans_options:
 						tab_str = "\t"*(indent_count+2)
-						tex_str += "{}\\begin{{solution}}{}\n".format(tab_str, height_str) \
+						tex_str += "{}\\begin{{solution}}[{}]\n".format(tab_str, height_str) \
 								+ "{}{}\n".format(tab_str, line) \
 								+ tab_str + "\\end{solution}\n"
 			else:
@@ -494,10 +477,7 @@ class ExamModule:
 		elif indent_change == -1:
 			tex_str += "\t\\end{parts}\n"
 		tex_str += "\\end{questions}\n"
-		# generate answers, default values
-		self.ans_sheet_str = tex_str
-		self.ans_key_str = tex_str
-		# non default case
+		# generate answers
 		self.gen_ans(initial_qcount, solutions)
 		return tex_str
 
@@ -506,12 +486,12 @@ class ExamModule:
 		content = self.content
 		bangs = self.bangs
 		tex_str = ""
+		noindent = "\\noindent"
 		for line in content:
 			if line not in bangs:
 				line = make_latex_safe(line)
-				line = re.sub(r"\\i\s*{", r"\\textit{", line)
-				line = re.sub(r"\\b\s*{", r"\\textbf{", line)
-				tex_str += "\t\\par {}\n".format(line)
+				tex_str += "\t\\par{} {}\n".format(noindent, line)
+				noindent = "";
 			else:
 				tex_str += bang_to_tex(line)				
 		return tex_str
@@ -542,8 +522,6 @@ class ExamModule:
 					tex_str += "\t\\hline\n"
 				else:
 					line = make_latex_safe(line)
-					line = re.sub(r"\\i\s*{", r"\\textit{", line)
-					line = re.sub(r"\\b\s*{", r"\\textbf{", line)
 					line = line.split("\t")
 					line = [tdata for tdata in line if tdata != ""]
 					line = " & ".join(line) + "\\\\"
@@ -703,9 +681,9 @@ class ExamSection:
 		"""Client should use to_tex()."""
 		# prevent nesting of center environments
 		centered = False
-		# top/bottom margins for each module
+		# top/bottom margins for each module, inches
 		spacings = {"title": "0.10", "subtitle": "0.05", "author": "0.05",\
-					"info": "0.15", "instructions": "0.15", "text":"0.10", "latex":"0.00"}
+					"info": "0.15", "text":"0.10", "latex":"0.00", "table":"0.05"}
 		tex_str = "\\begin{coverpages}\n"
 		# section bangs
 		for line in self.content:
@@ -719,50 +697,50 @@ class ExamSection:
 			if mt not in spacings:
 				compile_error("Invalid module type in Cover: " + mt)
 			# centering
-			if mt in ["title", "subtitle", "author", "info"] and not centered:
+			centered_modules = ["title", "subtitle", "author", "info"]
+			if mt in centered_modules and not centered:
 				tex_str += "\t\\begin{center}\n"
 				centered = True
-			elif mt not in ["title", "subtitle", "author", "info"] and centered:
+			elif mt not in centered_modules and centered:
 				tex_str += "\t\\end{center}\n"
 				centered = False
 			# spacing
 			spacing = spacings[mt]
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
 			# module content
-			if mt in ["info", "author"]:
-				tex_str += "\t\t\\par\n"
-				tex_str += "\t\t\\def\\arraystretch{2}\\tabcolsep=3pt\n\t\t\\begin{tabular}{r r}\n"
-			if mt == "author":
-				tex_str += "\t\t\t\\textbf{{Written by:}}\n"
-			for line in content:
-				if line not in bangs:
-					line = make_latex_safe(line)
-					if mt == "title":
-						tex_str += "\t\t\\par\\noindent\\textbf{{\\Huge  {}}}\n".format(line) 
-					if mt == "subtitle":
-						tex_str += "\t\t\\par\\noindent\\textbf{{\\large {}}}\n".format(line)
-					if mt == "author":
-						# Bold author's name, italicize author contact info
-						match = re.search(",", line)
-						if match:
-							splt = match.end()
-							author = line[:splt-1]
-							author_info = line[splt:]
-							tex_str += "\t\t\t & \\textbf{{{}}}, \\textit{{{}}} \\\\\n".format(
-								author, author_info)
-						else:
-							tex_str += "\t\t\t & \\textbf{{{}}} \\\\\n".format(content[0])
-					if mt == "info":
-						tex_str += "\t\t\t\\textbf{{{}:}} & \\makebox[4in]{{\\hrulefill}} \\\\\n".format(
-							line.strip())
-					if mt in ["instructions", "text"]:
-						tex_str += "\t\\par {}\n".format(line.strip())
-					if mt == "latex":
-						tex_str += line + "\n"
-				else:
-					tex_str += bang_to_tex(line, centered=True)
-			if mt in ["info", "author"]:
-				tex_str += "\t\t\\end{tabular}\n"
+			if mt in ["text", "latex", "table"]:
+				tex_str += mod.to_tex(qcount=None);
+			else:
+				if mt in ["info", "author"]:
+					tex_str += "\t\t\\par\n"
+					tex_str += "\t\t\\def\\arraystretch{2}\\tabcolsep=3pt\n\t\t\\begin{tabular}{r r}\n"
+				if mt == "author":
+					tex_str += "\t\t\t\\textbf{{Written by:}}\n"
+				for line in content:
+					if line not in bangs:
+						line = make_latex_safe(line)
+						if mt == "title":
+							tex_str += "\t\t\\par\\noindent\\textbf{{\\Huge  {}}}\n".format(line) 
+						if mt == "subtitle":
+							tex_str += "\t\t\\par\\noindent\\textbf{{\\large {}}}\n".format(line)
+						if mt == "author":
+							# Bold author's name, italicize author contact info
+							match = re.search(",", line)
+							if match:
+								splt = match.end()
+								author = line[:splt-1]
+								author_info = line[splt:]
+								tex_str += "\t\t\t & \\textbf{{{}}}, \\textit{{{}}} \\\\\n".format(
+									author, author_info)
+							else:
+								tex_str += "\t\t\t & \\textbf{{{}}} \\\\\n".format(content[0])
+						if mt == "info":
+							tex_str += "\t\t\t\\textbf{{{}:}} & \\makebox[4in]{{\\hrulefill}} \\\\\n".format(
+								line.strip())
+					else:
+						tex_str += bang_to_tex(line, centered=True)
+				if mt in ["info", "author"]:
+					tex_str += "\t\t\\end{tabular}\n"
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
 		# close centering after last module
 		if centered:
