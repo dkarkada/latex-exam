@@ -21,7 +21,7 @@ Any other info
 The order of modules within sections roughly corresponds to the order in which they're generated as tex. For example, putting the subtitle module before the title module results in the subtitle being rendered above.
 Throughout the exam, you can use the following bangs: gap (which inserts vertical space), img (which inserts an image with the given filename and renders it at the given width), and newpage (self explanatory). Other bangs are specific to certain modules.
 
-[Author] Dhruva Karkada, dkarkada@gmail.com
+[Author] Dhruva "deorge" Karkada, dkarkada@gmail.com
 
 [Section]
 [Title] Matching
