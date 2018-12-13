@@ -1,0 +1,34 @@
+{
+    "name": "exam",
+    "displayName": "exam",
+    "description": "Syntax highlighting for .exam file formats.",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.29.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "exam",
+                "aliases": [
+                    "Exam",
+                    "exam"
+                ],
+                "extensions": [
+                    ".exam"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "exam",
+                "scopeName": "text.exam",
+                "path": "./syntaxes/exam.tmLanguage.json"
+            }
+        ]
+    }
+}

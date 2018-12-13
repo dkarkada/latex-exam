@@ -1,0 +1,99 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Exam",
+	"patterns": [
+		{
+			"include": "#headertag"
+		},
+		{
+			"include": "#math"
+		},
+		{
+			"include": "#comment"
+		},
+		{
+			"include": "#bang"
+		},
+		{
+			"include": "#numtag"
+		}
+	],
+	"repository": {
+		"headertag": {
+			"patterns": [
+				{
+					"begin": "^\\[",
+					"end": "\\]",
+					"patterns": [
+						{
+							"match": "(?i)section|cover|header",
+							"name": "markup.bold.exam"
+						},
+						{
+							"match": "(?i)title|subtitle|author|info|instructions|match|tf|mc|frq|text|latex|table",
+							"name": "entity.name.section.exam"
+						}
+					]
+				}
+			]
+		},
+		"math": {
+			"patterns": [
+				{
+					"begin": "((?<!\\\\)\\$)|(\\\\\\[)",
+					"end": "((?<!\\\\)\\$)|(\\\\])",
+					"name": "markup.italic.exam"
+				}
+			]
+		},
+		"comment": {
+			"patterns": [
+				{
+					"begin": "//",
+					"end": "$",
+					"name": "comment.line.exam",
+					"patterns": [
+						{
+							"include": "#math"
+						},
+						{
+							"include": "#numtag"
+						}
+					]
+				}
+			]
+		},
+		"bang": {
+			"patterns": [
+				{
+					"begin": "!(newpage|options|ans-options|gap|img|pkg|newcol|txt|hrule)",
+					"end": "$",
+					"beginCaptures": {
+						"0": {
+							"patterns": [
+								{
+									"name": "variable.function.exam",
+									"match": "!(newpage|options|ans-options|gap|img|pkg|newcol|txt|hrule)"
+								}
+							]
+						}
+					},
+					"patterns": [
+						{
+							"include": "#bangargs"
+						}
+					]
+				}
+			]
+		},
+		"numtag": {
+			"name": "string.exam",
+			"match": "\\s*{\\d*\\.?\\d+}"
+		},
+		"bangargs": {
+			"name": "string.exam",
+			"match": "{[^}]*}$"
+		}
+	},
+	"scopeName": "text.exam"
+}
