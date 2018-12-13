@@ -22,7 +22,7 @@ Idk how/if it works on any other operating systems.
 ## How to use it
 This tool requires python 3 to produce the .tex files, and latexmk (which should come with most TeX distributions) to then produce the pdf.
 
-`examtex` is a bash script which takes arguments
+`examtex` is an executable python script which takes arguments
 
 ```
 examtex -option filepath/filename.exam
@@ -33,7 +33,7 @@ and produces `filename-EXAM.tex` and `filename-KEY.tex` in the same directory. T
 * -p: will create `filename-EXAM.pdf` and `filename-KEY.pdf`
 * -c: will create `filename-EXAM.pdf` and `filename-KEY.pdf` and clean up the auxiliary files.
 
-Alternatively, you can produce the tex files without the bash script using
+Alternatively, you can produce the tex files without the executable script using
 
 ```
 python3 examtex.py filepath/filename.exam
