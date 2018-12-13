@@ -10,8 +10,8 @@ sec_pattern = r"(?i)\s*\[(header|cover|section)\]"
 
 def compile_error(err):
 	"""Does this really need a docstring."""
-	print(err)
-	sys.exit(0)
+	print(err, file=sys.stderr)
+	sys.exit(1)
 
 def make_latex_safe(line):
 	"""Replace LaTeX-sensitive characters with LaTeX counterparts. Returns modified line."""
