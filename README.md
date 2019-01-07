@@ -39,13 +39,20 @@ Alternatively, you can produce the tex files without the executable script using
 python3 examtex.py filepath/filename.exam
 ```
 
-## The sublime syntax and build files
-If you're writing your exams in sublime, you can get some sweet syntax highlighting by putting `Exam.sublime-syntax` in the appropriate directory (on Ubuntu: `~/.config/sublime-text-3/Packages/User/`). You can get a build system by putting `Exam.sublime-build` in the same directory; then using ctrl-b will automatically run
+## Syntax Highlighting
+
+### Sublime 
+
+If you're writing your exams in Sublime (a popular [text editor](https://www.sublimetext.com/)), you can get some sweet syntax highlighting by putting `Exam.sublime-syntax` in the appropriate directory (on Ubuntu: `~/.config/sublime-text-3/Packages/User/`). You can get a build system by putting `Exam.sublime-build` in the same directory; then using ctrl-b will automatically run
 
 ```
 examtex -c $file
 ```
 for the current file.
+
+### VS Code
+
+In VS Code (another popular [editor](https://code.visualstudio.com/)), you can get syntax highlighting by installing the `exam` folder in the appropriate directory (on Ubuntu: `~/.vscode/extensions/`). Unfortunately, setting up the build system was too tricky and I didn't figure out how to make it work so you'll have to use the terminal :( 
 
 ## Making `.exam` files
 A sample exam is provided in `tutorial/sample.exam`.  Exams are organized into sections, each containing modules. Sections and modules are headed by a tag: `[Section]` represents the start of a new section, and `[FRQ]` represents the start of a module for free-response questions.
