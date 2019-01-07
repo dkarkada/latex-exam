@@ -1,4 +1,5 @@
 import sys
+import os.path
 import re
 import math
 from random import shuffle
@@ -7,6 +8,8 @@ bang_pattern = r"\s*!(newpage|options|ans-options|gap|img|pkg)"
 mc_bang_pattern = r"\s*!(newcol|txt|hrule)"
 mod_pattern = r"(?i)\s*\[(title|subtitle|author|info|match|tf|mc|frq|text|latex|table)\]"
 sec_pattern = r"(?i)\s*\[(header|cover|section)\]"
+
+tex_template = ""
 
 def compile_error(err):
 	"""Does this really need a docstring."""
@@ -386,7 +389,6 @@ class ExamModule:
 		"""Client should use to_tex()."""
 		content = self.content
 		bangs = self.bangs
-		options = self.options
 		solutions = []
 		initial_qcount = qcount[0]
 		# 3-item list for question number, part number, subpart number
@@ -491,7 +493,7 @@ class ExamModule:
 			if line not in bangs:
 				line = make_latex_safe(line)
 				tex_str += "\t\\par{} {}\n".format(noindent, line)
-				noindent = "";
+				noindent = ""
 			else:
 				tex_str += bang_to_tex(line)				
 		return tex_str
@@ -591,7 +593,7 @@ class ExamModule:
 				# in the case that the new qps has subparts, need to start env and put in dummy qps
 				i = level + 1
 				while i<3 and hierarchy[i]!=0:
-					level = i;
+					level = i
 					ans_str += "{}\\begin{{{}s}}\n".format(tab_stubs[i], ans_stubs[i][1:])
 					ans_str += "{}{}\n".format(tab_stubs[i], ans_stubs[i])
 					i += 1
@@ -601,13 +603,13 @@ class ExamModule:
 				i = level
 				while i>topmost_change_ind:
 					ans_str += "{}\\end{{{}s}}\n".format(tab_stubs[i], ans_stubs[i][1:])
-					i -= 1;
+					i -= 1
 				# need to close existing environments, up to the necessary level
-				level = i;
+				level = i
 				ans_str += "{}{}\n".format(tab_stubs[i], ans_stubs[i])
 				i += 1
 				while i<3 and hierarchy[i]!=0:
-					level = i;
+					level = i
 					ans_str += "{}\\begin{{{}s}}\n".format(tab_stubs[i], ans_stubs[i][1:])
 					ans_str += "{}{}\n".format(tab_stubs[i], ans_stubs[i])
 					i += 1
@@ -620,7 +622,7 @@ class ExamModule:
 		# cleanup: close existing environments
 		while level>=0:
 			ans_str += "{}\\end{{{}s}}\n".format(tab_stubs[level], ans_stubs[level][1:])
-			level -= 1;
+			level -= 1
 		if "twocolumn" in self.ans_options:
 			ans_str += "\t\\end{multicols*}\n" \
 					+ "\\renewcommand{\\questionshook}{}\n"
@@ -628,7 +630,6 @@ class ExamModule:
 		if "break" in self.ans_options:
 			ans_str += "\t\\newpage\n"
 		return ans_str
-
 
 class ExamSection:
 
@@ -709,7 +710,7 @@ class ExamSection:
 			tex_str += "\t\t\\vspace{{{} in}}\n".format(spacing)
 			# module content
 			if mt in ["text", "latex", "table"]:
-				tex_str += mod.to_tex(qcount=None);
+				tex_str += mod.to_tex(qcount=None)
 			else:
 				if mt in ["info", "author"]:
 					tex_str += "\t\t\\par\n"
@@ -795,22 +796,6 @@ class Exam:
 		self.sections = []
 		# is in list so that updates elsewhere will stick around (pass by reference hack)
 		self.question_counter = [0]
-		# make template containing labelled tex snippets
-		with open("template.tex", 'r') as filein:
-			labels = {}
-			label = ""
-			for line in filein:
-				if not re.match(r"\s*$", line):
-					match = re.match(r"\s*%", line)
-					if match:
-						splt = match.end()
-						label = line[splt:].strip()
-					elif label != "":
-						if label in labels:
-							labels[label] += line
-						else:
-							labels[label] = line
-		self.template = labels
 
 	def verify_sections(self):
 		"""Make sure nothing is wonky about the exam"""
@@ -859,8 +844,7 @@ class Exam:
 
 	def exam_preamble(self):
 		"""Returns tex for exam preamble."""
-		tex_str = self.template["preamble"] + "\n"
-		tex_str += self.template["answerkey"] + "\n"
+		tex_str = tex_template + "\n"
 		for pkg in self.get_packages():
 			tex_str += pkg
 		header_elems = self.get_header_info()
@@ -892,8 +876,6 @@ class Exam:
 
 	def ans_key_tex(self):
 		"""Returns answer key tex."""
-		# ans_str = self.template["preamble"] + "\n"
-		# ans_str += self.template["answerkey"] + "\n"
 		ans_str = self.exam_preamble()
 		ans_str += "\\printanswers" + "\n"
 		ans_str += "\n\\begin{document}\n"
@@ -902,7 +884,6 @@ class Exam:
 			ans_str += section.ans_tex(True)
 		ans_str += "\\end{document}"
 		return ans_str
-
 
 def generate_tex(filename):
 	"""
@@ -943,8 +924,21 @@ def generate_tex(filename):
 
 	return exam.to_tex(), exam.ans_key_tex()
 
+def read_template(dir):
+	"""
+	Reads the template tex file for the preamble.
+
+	dir (str): The directory containing the template file.
+	"""
+	with open(os.path.join(dir, "template.tex"), 'r') as filein:
+		global tex_template
+		for line in filein:
+			# update global variable
+			tex_template += line
+
 def main():
-	# existence of argument is checked in bash script
+	read_template(os.path.dirname(sys.argv[0]))
+	# existence of argument is checked in executable script
 	filename = sys.argv[1]
 	tex_str, ans_str = generate_tex(filename)
 	# write to tex files
