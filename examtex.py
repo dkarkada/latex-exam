@@ -118,6 +118,19 @@ def update_options(bang, options, ans_options):
 		else:
 			opt[arg] = ''
 
+def num_indents(line):
+	""" Returns the number of indents in a line, using either tabs or 4 spaces."""
+	match = re.match(r"\s+", line)
+	if not match:
+		return 0
+	match = re.match(r"\t+", line)
+	if match:
+		return len(match.group(0))
+	match = re.match(r" +", line)
+	if match:
+		return len(match.group(0)) // 4
+	return 0
+
 class MCQuestion:
 
 	def __init__(self, question, points, choices, correct_choice):
@@ -294,7 +307,8 @@ class ExamModule:
 						questions += current_bangs
 						current_bangs = []
 					question_str = line
-				elif re.match("\t+", line):
+				# check if indented
+				elif num_indents(line) != 0:
 					# check if correct answer specified; by default first choice is correct
 					match = re.search("{C}", line)
 					if match:
@@ -403,7 +417,7 @@ class ExamModule:
 				# check that line is not a solution
 				if not re.match(r"\s*//", line):
 					# current line indentation
-					indent_count = len(line) - len(line.lstrip("\t"))
+					indent_count = num_indents(line)
 					# change from previous indentation
 					indent_change = indent_count - prev_indent_count
 					# switch on indent_change to determine whether starting/ending parts/subparts
@@ -524,7 +538,9 @@ class ExamModule:
 					tex_str += "\t\\hline\n"
 				else:
 					line = make_latex_safe(line)
-					line = line.split("\t")
+					# split on both tabs and on multi-space
+					line = re.split(r'\t+| {2,}', line)
+					print(line)
 					line = [tdata for tdata in line if tdata != ""]
 					line = " & ".join(line) + "\\\\"
 					tex_str += "\t{}\n".format(line)
