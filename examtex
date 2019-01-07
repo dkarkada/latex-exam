@@ -42,7 +42,10 @@ if filebase.endswith(".exam"):
 	filebase = filebase[:-5]
 sourcedir = os.path.dirname(os.path.realpath(__file__))
 
-cmd = "python3 " + sourcedir + "/examtex.py " + filepath
+cmd_args = ["python3", os.path.join(sourcedir, "examtex.py"), filepath]
+# wrap args in quotes if contains a space
+cmd_args = ['"{0}"'.format(x) if " " in x else x for x in cmd_args]
+cmd = " ".join(cmd_args)
 handle(os.system(cmd))
 
 if args["p"]:
