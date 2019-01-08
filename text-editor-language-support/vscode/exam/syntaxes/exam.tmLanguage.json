@@ -16,6 +16,9 @@
 		},
 		{
 			"include": "#numtag"
+		},
+		{
+			"include": "#correct-ans-tag"
 		}
 	],
 	"repository": {
@@ -89,6 +92,10 @@
 		"numtag": {
 			"name": "string.exam",
 			"match": "\\s*{\\d*\\.?\\d+}"
+		},
+		"correct-ans-tag": {
+			"name": "string.exam",
+			"match": "{C}$"
 		},
 		"bangargs": {
 			"name": "string.exam",
