@@ -33,12 +33,6 @@ and produces `filename-EXAM.tex` and `filename-KEY.tex` in the same directory. T
 * -p: will create `filename-EXAM.pdf` and `filename-KEY.pdf`
 * -c: will create `filename-EXAM.pdf` and `filename-KEY.pdf` and clean up the auxiliary files.
 
-Alternatively, you can produce the tex files without the executable script using
-
-```
-python3 examtex.py filepath/filename.exam
-```
-
 ## Syntax Highlighting
 
 ### Sublime 
