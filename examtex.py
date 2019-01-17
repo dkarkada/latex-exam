@@ -803,6 +803,7 @@ class ExamSection:
 					ans_str += module.ans_key_str
 				elif "sheet" in module.ans_options:
 					ans_str += module.ans_sheet_str
+				ans_str += "\\par\\vspace{.05in}\n"
 		return ans_str
 
 
@@ -887,7 +888,7 @@ class Exam:
 			tex_str += "\\newpage\n"
 			tex_str += "\\section*{Answer Sheet}\n"
 			tex_str += ans_sheet
-		tex_str += "\\end{document}"
+		tex_str += "\\end{document}\n"
 		return tex_str
 
 	def ans_key_tex(self):
@@ -898,7 +899,7 @@ class Exam:
 		ans_str += "\\section*{Answer Key}\n"
 		for section in self.sections:
 			ans_str += section.ans_tex(True)
-		ans_str += "\\end{document}"
+		ans_str += "\\end{document}\n"
 		return ans_str
 
 def generate_tex(filename):
