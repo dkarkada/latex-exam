@@ -33,7 +33,7 @@
 							"name": "markup.bold.exam"
 						},
 						{
-							"match": "(?i)title|subtitle|author|info|instructions|match|tf|mc|frq|text|latex|table",
+							"match": "(?i)title|subtitle|author|info|match|tf|mc|frq|text|latex|table",
 							"name": "entity.name.section.exam"
 						}
 					]
@@ -69,14 +69,14 @@
 		"bang": {
 			"patterns": [
 				{
-					"begin": "!(newpage|options|ans-options|gap|img|pkg|newcol|txt|hrule)",
+					"begin": "!(newpage|options|ans-options|gap|img|pkg|newcol|hrule|txt)",
 					"end": "$",
 					"beginCaptures": {
 						"0": {
 							"patterns": [
 								{
 									"name": "variable.function.exam",
-									"match": "!(newpage|options|ans-options|gap|img|pkg|newcol|txt|hrule)"
+									"match": "!(newpage|options|ans-options|gap|img|pkg|newcol|hrule|txt)"
 								}
 							]
 						}
