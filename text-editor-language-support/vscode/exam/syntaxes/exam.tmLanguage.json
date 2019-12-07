@@ -3,7 +3,10 @@
 	"name": "Exam",
 	"patterns": [
 		{
-			"include": "#headertag"
+			"include": "#section"
+		},
+		{
+			"include": "#module"
 		},
 		{
 			"include": "#math"
@@ -22,21 +25,19 @@
 		}
 	],
 	"repository": {
-		"headertag": {
+		"section": {
 			"patterns": [
 				{
-					"begin": "^\\[",
-					"end": "\\]",
-					"patterns": [
-						{
-							"match": "(?i)section|cover|header",
-							"name": "markup.bold.exam"
-						},
-						{
-							"match": "(?i)title|subtitle|author|info|match|tf|mc|frq|text|latex|table",
-							"name": "entity.name.section.exam"
-						}
-					]
+					"match": "(?i)^\\[(meta|cover|match|tf|mc|frq)\\]",
+					"name": "markup.bold.exam"
+				}
+			]
+		},
+		"module": {
+			"patterns": [
+				{
+					"match": "(?i)^{(image|text|latex|table)}",
+					"name": "entity.name.section.exam"
 				}
 			]
 		},
@@ -69,37 +70,19 @@
 		"bang": {
 			"patterns": [
 				{
-					"begin": "!(newpage|options|ans-options|gap|img|pkg|newcol|hrule|txt)",
+					"begin": "!(newpage|gap|newcol|hrule)",
 					"end": "$",
-					"beginCaptures": {
-						"0": {
-							"patterns": [
-								{
-									"name": "variable.function.exam",
-									"match": "!(newpage|options|ans-options|gap|img|pkg|newcol|hrule|txt)"
-								}
-							]
-						}
-					},
-					"patterns": [
-						{
-							"include": "#bangargs"
-						}
-					]
+					"name": "variable.function.exam"
 				}
 			]
 		},
 		"numtag": {
 			"name": "string.exam",
-			"match": "\\s*{\\d*\\.?\\d+}"
+			"match": "\\s*{\\d*\\.?\\d+[^}]*}"
 		},
 		"correct-ans-tag": {
 			"name": "string.exam",
-			"match": "{C}$"
-		},
-		"bangargs": {
-			"name": "string.exam",
-			"match": "{[^}]*}$"
+			"match": "{C}\\s*$"
 		}
 	},
 	"scopeName": "text.exam"

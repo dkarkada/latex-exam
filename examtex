@@ -3,17 +3,20 @@ import sys
 import argparse
 import os
 
+
 def error(err):
-	print(err)
-	sys.exit(0)
+    print(err)
+    sys.exit(0)
+
 
 def handle(errcode):
-	if errcode!=0:
-		error("Quitting.")
+    if errcode != 0:
+        error("Quitting.")
 
 
 class cd:
     """Context manager for changing the current working directory"""
+
     def __init__(self, newPath):
         self.newPath = newPath
 
@@ -24,22 +27,23 @@ class cd:
     def __exit__(self, etype, value, traceback):
         os.chdir(self.savedPath)
 
+
 parser = argparse.ArgumentParser(description='examtex')
 parser.add_argument("-c", action="store_true")
 parser.add_argument("-p", action="store_true")
 parser.add_argument("filepath")
 args = vars(parser.parse_args(sys.argv[1:]))
 if args["c"]:
-	args["p"] = True;
+    args["p"] = True
 
 filepath = args["filepath"]
 if not os.path.isfile(filepath):
-	error("Invalid file path: " + filepath)
+    error("Invalid file path: " + filepath)
 filepath = os.path.abspath(filepath)
 filedir = os.path.dirname(filepath)
 filebase = os.path.basename(filepath)
 if filebase.endswith(".exam"):
-	filebase = filebase[:-5]
+    filebase = filebase[:-5]
 sourcedir = os.path.dirname(os.path.realpath(__file__))
 
 cmd_args = ["python3", os.path.join(sourcedir, "examtex.py"), filepath]
@@ -49,9 +53,9 @@ cmd = " ".join(cmd_args)
 handle(os.system(cmd))
 
 if args["p"]:
-	with cd(filedir):
-		handle(os.system("latexmk -pdf -quiet " + filebase + "-EXAM.tex"))
-		handle(os.system("latexmk -pdf -quiet " + filebase + "-KEY.tex"))
-		if args["c"]:
-			handle(os.system("latexmk -c"))
-		handle(os.system("evince " + filebase + "-EXAM.pdf"))
+    with cd(filedir):
+        handle(os.system("latexmk -pdf -quiet " + filebase + "-EXAM.tex"))
+        handle(os.system("latexmk -pdf -quiet " + filebase + "-KEY.tex"))
+        if args["c"]:
+            handle(os.system("latexmk -c"))
+        handle(os.system("evince " + filebase + "-EXAM.pdf"))

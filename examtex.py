@@ -19,7 +19,8 @@ def compile_error(err):
 
 
 def make_latex_safe(line):
-    """Replace LaTeX-sensitive characters with LaTeX counterparts. Returns modified line."""
+    """Replace LaTeX-sensitive characters with LaTeX counterparts.
+    Returns modified line."""
     line = line.replace("%", "\\%")
     # search for double quoted substrings, replace with ``''
     match = re.search("\"[^\"]*\"", line)
@@ -27,7 +28,8 @@ def make_latex_safe(line):
         repl = "``{}''".format(match.group(0)[1:-1])
         line = line[:match.start()] + repl + line[match.end():]
         match = re.search("\"[^\"]*\"", line)
-    # search for single quoted substrings, replace with `'. Capture surrounding whitespace
+    # search for single quoted substrings, replace with `'. Capture
+    # surrounding whitespace
     match = re.search("\\s'[^']+'\\s", line)
     while match:
         repl = "`{}'".format(match.group(0)[2:-2])
@@ -125,7 +127,8 @@ def update_options(bang, options, ans_options):
 
 
 def num_indents(line):
-    """ Returns the number of indents in a line, using either tabs or 4 spaces."""
+    """ Returns the number of indents in a line, using either tabs
+    or 4 spaces."""
     match = re.match(r"\s+", line)
     if not match:
         return 0
@@ -468,8 +471,7 @@ class ExamModule:
                     match = re.match(r"{\s*\d+\s*}", line)
                     point_str = ""
                     if match:
-                        point_str = match.group(0)[1:-1]
-                        point_str = "[{}]".format(point_str)
+                        point_str = "[{}]".format(match.group(0)[1:-1])
                         line = line[match.end():]
                     # question tex
                     # empty question (subparts without question)
@@ -580,7 +582,7 @@ class ExamModule:
 
         initial_qcount (int): the question number the previous module ended with.
         solutions (list): contains solutions for this module. FRQ solutions are 3-tupled as
-                (hierarchy, hieght_str, solution_str).
+                (hierarchy, height_str, solution_str).
         """
         if self.mod_type in ["match", "tf", "mc"]:
             ans_str = "\t\\raggedcolumns\n" \
