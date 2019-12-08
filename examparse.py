@@ -85,6 +85,12 @@ class Section:
             return Bang(cont), lines[1:]
         return None, lines
 
+    def to_tex(self):
+        return ""
+
+    def ans_sheet_tex(self):
+        return ""
+
 
 class Cover(Section):
 
@@ -257,14 +263,12 @@ class MC(Section):
             tex.append("\\renewcommand{\\questionshook}{\\setlength" +
                        "{\\leftmargin}{0.0 in}}")
         in_questions = False
-        solutions = []
         for cont in self.content:
             if type(cont) == MC.MCQuestion:
                 if not in_questions:
                     in_questions = True
                     tex.append("\\begin{questions}")
                     tex.append("\\setcounter{{question}}{{{}}}".format(qcount))
-                solutions.append(cont.get_answer())
                 qcount += 1
             else:
                 if in_questions:
@@ -278,17 +282,29 @@ class MC(Section):
             tex.append("\\renewcommand{\\choiceshook}{}")
             tex.append("\\renewcommand{\\questionshook}{}")
         if self.options["condense"]:
-            tex.append("\\raggedcolumns")
-            tex.append("\\begin{multicols}{5}")
-            tex.append("\\begin{enumerate}")
-            tex.append("\t\\setcounter{{enumi}}{{{}}}".format(initial_qcount))
-            for sol in solutions:
-                tex.append("\t\\item \\choiceblank{{{}}}".format(sol))
-            tex.append("\\end{enumerate}")
-            # spacing needs fixing iff the columns are uneven in length.
-            if len(solutions) % 5 != 0:
-                tex.append("\\fixcolspacing")
-            tex.append("\\end{multicols}")
+            qcount = initial_qcount
+            tex.append(self.ans_sheet_tex())
+        return "\n".join(tex)
+
+    def ans_sheet_tex(self):
+        global qcount
+        tex = []
+        solutions = []
+        for cont in self.content:
+            if type(cont) == MC.MCQuestion:
+                solutions.append(cont.get_answer())
+        tex.append("\\raggedcolumns")
+        tex.append("\\begin{multicols}{5}")
+        tex.append("\\begin{enumerate}")
+        tex.append("\t\\setcounter{{enumi}}{{{}}}".format(qcount))
+        for sol in solutions:
+            tex.append("\t\\item \\choiceblank{{{}}}".format(sol))
+            qcount += 1
+        tex.append("\\end{enumerate}")
+        # spacing needs fixing iff the columns are uneven in length.
+        if len(solutions) % 5 != 0:
+            tex.append("\\fixcolspacing")
+        tex.append("\\end{multicols}")
         return "\n".join(tex)
 
     class MCQuestion:
@@ -388,6 +404,18 @@ class FRQ(Section):
             tex.append("\\end{questions}")
         return "\n".join(tex)
 
+    def ans_sheet_tex(self):
+        global qcount
+        tex = []
+        tex.append("\\begin{questions}")
+        tex.append("\\setcounter{{question}}{{{}}}".format(qcount))
+        for cont in self.content:
+            if type(cont) == FRQ.FRQuestion:
+                tex.append(cont.ans_sheet_tex())
+                qcount += 1
+        tex.append("\\end{questions}")
+        return "\n".join(tex)
+
     class FRQuestion:
         partlabels = ['question', 'part', 'subpart', 'subsubpart']
 
@@ -400,7 +428,7 @@ class FRQ(Section):
             if match:
                 self.point_val = "[{}]".format(match.group(0)[1:-1])
                 question = question[match.end():].strip()
-            self.question = question
+            self.question = question if question != "*" else ""
             lines = FRQ.FRQuestion.unindent(lines[1:])
             if len(lines) == 0:
                 compile_error("FRQ question missing answer.", self.question)
@@ -453,6 +481,33 @@ class FRQ(Section):
                     tex.append(cont.to_tex())
                 tex.append("{}\\end{{{}}}".format(indent1, qlabel1))
             elif not exam.meta["answer sheet"]:
+                indent1 = "\t" * (self.level+1)
+                tex.append(indent1 + "\\par")
+                tex.append("{}\\begin{{solution}}[{}pt]"
+                           .format(indent1, self.ans_height))
+                tex.append(indent1 + latexify(self.answer))
+                tex.append(indent1 + "\\end{solution}")
+            return "\n".join(tex)
+
+        def ans_sheet_tex(self):
+            indent = "\t" * self.level
+            qlabel = FRQ.FRQuestion.partlabels[self.level]
+            tex = []
+            if self.content:
+                tex.append("{}\\{}".format(indent, qlabel))
+                if self.level+1 >= len(FRQ.FRQuestion.partlabels):
+                    compile_error("FRQ too nested (subsubsubparts not \
+                        allowed.)", self.question)
+                indent1 = "\t" * (self.level+1)
+                qlabel1 = FRQ.FRQuestion.partlabels[self.level+1] + "s"
+                tex.append("{}\\begin{{{}}}".format(indent1, qlabel1))
+                for cont in self.content:
+                    if type(cont) == FRQ.FRQuestion:
+                        tex.append(cont.ans_sheet_tex())
+                tex.append("{}\\end{{{}}}".format(indent1, qlabel1))
+            else:
+                tex.append("{}\\{}\\ifprintanswers\\else\\vphantom{{0}}\\fi"
+                           .format(indent, qlabel))
                 indent1 = "\t" * (self.level+1)
                 tex.append(indent1 + "\\par")
                 tex.append("{}\\begin{{solution}}[{}pt]"
@@ -550,11 +605,9 @@ class Bang:
 
 class Exam:
 
-    def __init__(self, examdata, template):
+    def __init__(self, examdata):
         self.sections = []
-        self.meta = {"answer sheet": False,
-                     "image sheet": False}
-        self.template = template
+        self.meta = {}
         sec_pattern = r"(?i)\s*\[(meta|cover|match|tf|mc|frq)\]\s*$"
         section_inds = [re.match(sec_pattern, line) for line in examdata]
         section_inds = np.flatnonzero(section_inds)
@@ -583,9 +636,27 @@ class Exam:
                 self.sections.append(MC(content))
             elif section_type == "frq":
                 self.sections.append(FRQ(content))
+        self.format_meta()
 
-    def to_tex(self):
-        tex = [self.template]
+    def format_meta(self):
+        meta = self.meta
+        if "answer sheet" in meta:
+            sheet = meta["answer sheet"][0].lower()
+            if sheet not in ["true", "false"]:
+                compile_error("Answer sheet option must be boolean.")
+            meta["answer sheet"] = (sheet == "true")
+        else:
+            meta["answer sheet"] = False
+        if "image sheet" in meta:
+            sheet = meta["image sheet"][0].lower()
+            if sheet not in ["true", "false"]:
+                compile_error("Image sheet option must be boolean.")
+            meta["image sheet"] = (sheet == "true")
+        else:
+            meta["image sheet"] = False
+
+    def meta_tex(self):
+        tex = [template]
         if "packages" in self.meta:
             for pkg in self.meta["packages"]:
                 tex.append("\\usepackage{{{}}}\n".format(pkg))
@@ -598,6 +669,10 @@ class Exam:
             r = r + (":\\kern .5 in" if r != "" else "")
             header_tex = "\\header{{{}}}{{{}}}{{{}}}\n".format(l, c, r)
             tex.append("\\pagestyle{head}\n" + header_tex + "\\headrule")
+        return "\n".join(tex)
+
+    def to_tex(self):
+        tex = [self.meta_tex()]
         tex.append("\n\\begin{document}")
         for section in self.sections:
             tex.append(section.to_tex())
@@ -607,39 +682,61 @@ class Exam:
     def ans_sheet_tex(self):
         if not self.meta["answer sheet"]:
             return None
-        tex = [self.template]
+        tex = [self.meta_tex()]
         tex.append("\n\\begin{document}")
         tex.append("\\section*{Answer Sheet}")
         for section in self.sections:
-            tex.append(section.ans_sheet_tex())
+            ans = section.ans_sheet_tex()
+            tex.append(ans)
+            if ans != "":
+                tex.append("\\vspace{0.25in}")
         tex.append("\\end{document}\n")
         return "\n".join(tex)
 
     def ans_key_tex(self):
-        tex = [self.template]
-        tex.append("\n\\begin{document}")
-        tex.append("\\section*{Answer Key}")
-        for section in self.sections:
-            tex.append(section.ans_key_tex())
-        tex.append("\\end{document}\n")
-        return "\n".join(tex)
+        if self.meta["answer sheet"]:
+            tex = self.to_tex()
+        else:
+            tex = self.ans_sheet_tex()
+        tex = re.sub("%\\printanswers", "\\printanswers", tex)
+        return tex
 
 
 def main():
     random.seed(5)
-    with open("/home/dkarkada/Documents/scioly/test.exam", 'r') as filein:
+    global exam
+    global qcount
+    global template
+    template_dir = os.path.join(os.path.dirname(sys.argv[0]), "template.tex")
+    with open(template_dir, 'r') as filein:
+        template = "".join(filein.readlines())
+    # existence of argument is checked in executable script
+    filename = sys.argv[1]
+    with open(filename, 'r') as filein:
         lines = filein.readlines()
     lines = [l for l in lines if l.strip() != ""]
-    dirname = ""
-    with open(os.path.join(dirname, "template.tex"), 'r') as filein:
-        template = "".join(filein.readlines())
-    global exam
-    exam = Exam(lines, template)
-    tex = exam.to_tex()
-    with open("/home/dkarkada/Documents/scioly/test.tex", 'w+') as fileout:
-        fileout.write(tex)
+    exam = Exam(lines)
+    # write to tex files
+    match = re.search("\\.", filename)
+    if match:
+        filename = filename[:match.start()]
+    qcount = 0
+    exam_tex = exam.to_tex()
+    with open(filename+"-EXAM.tex", 'w+') as fileout:
+        fileout.write(exam_tex)
+    key_tex = exam_tex
+    if exam.meta["answer sheet"]:
+        qcount = 0
+        sheet_tex = exam.ans_sheet_tex()
+        with open(filename+"-ANS_SHEET.tex", 'w+') as fileout:
+            fileout.write(sheet_tex)
+        key_tex = sheet_tex
+    key_tex = re.sub("%\\printanswers", "\\printanswers", key_tex)
+    with open(filename+"-KEY.tex", 'w+') as fileout:
+        fileout.write(key_tex)
 
 
 qcount = 0
 exam = None
+template = ""
 main()
