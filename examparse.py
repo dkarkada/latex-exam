@@ -14,7 +14,7 @@ def compile_error(err, traceback=None):
     sys.exit(1)
 
 
-def make_latex_safe(line):
+def latexify(line):
     """Replace LaTeX-sensitive characters with LaTeX counterparts.
     Returns modified line."""
     line = line.replace("%", "\\%")
@@ -45,7 +45,7 @@ def process_options(content):
         except ValueError:
             compile_error("Options must have 'key:: value' structure.", line)
         key = key.strip().lower()
-        val = [x.strip() for x in val.strip().split(";")]
+        val = [x.strip() for x in val.strip().split(";;")]
         options[key] = val
     return options
 
@@ -85,9 +85,6 @@ class Section:
             return Bang(cont), lines[1:]
         return None, lines
 
-    def to_tex(self):
-        return str(type(self))
-
 
 class Cover(Section):
 
@@ -107,12 +104,52 @@ class Cover(Section):
         except ValueError:
             compile_error("Error in Cover. Each line must have exactly\
                 one double colon.", lines[0])
-        val = [x.strip() for x in val.split(';')]
+        val = [v.strip() for v in val.split(";;")]
         cont = (key.strip().lower(), val)
         return cont, lines[1:]
 
     def to_tex(self):
-        return ""
+        tex = []
+        for cont in self.content:
+            if type(cont) == tuple:
+                key, val = cont
+                if key == "title":
+                    title = latexify(val[0])
+                    tex.append("\\begin{center}")
+                    tex.append("\t\\par\\noindent\\textbf{{\\Huge {}}}"
+                               .format(title))
+                    tex.append("\\end{center}")
+                if key == "subtitle":
+                    subtitle = latexify(val[0])
+                    tex.append("\\begin{center}")
+                    tex.append("\t\\par\\noindent\\textbf{{\\large {}}}"
+                               .format(subtitle))
+                    tex.append("\\end{center}")
+                if key == "id":
+                    tex.append("\\begin{center}")
+                    tex.append("\t\\par")
+                    tex.append("\t\\def\\arraystretch{2}\\tabcolsep=3pt")
+                    tex.append("\t\\begin{tabular}{r r}")
+                    for v in val:
+                        v = latexify(v)
+                        tex.append("\t\t\\textbf{{{}:}}".format(v)
+                                   + "& \\makebox[4in]{\\hrulefill} \\\\")
+                    tex.append("\t\\end{tabular}")
+                    tex.append("\\end{center}")
+                if key == "author":
+                    tex.append("\\begin{center}")
+                    tex.append("\t\\par")
+                    tex.append("\t\\def\\arraystretch{1}\\tabcolsep=3pt")
+                    tex.append("\t\\begin{tabular}{r l}")
+                    for i in range(len(val)):
+                        v = latexify(val[i])
+                        firstcol = "\\textbf{{Written by:}}" if i == 0 else ""
+                        tex.append("\t\t {} & {} \\\\".format(firstcol, v))
+                    tex.append("\t\\end{tabular}")
+                    tex.append("\\end{center}")
+            else:
+                tex.append(cont.to_tex())
+        return "\n".join(tex)
 
 
 class Match(Section):
@@ -174,18 +211,18 @@ class MC(Section):
     def format_options(self):
         options = self.options
         if "twocolumn" in options:
-            twocol = options["twocolumn"][0].strip().lower()
+            twocol = options["twocolumn"][0].lower()
             if twocol not in ["true", "false"]:
                 compile_error("Twocolumn option must be boolean.")
             options["twocolumn"] = (twocol == "true")
         else:
             options["twocolumn"] = False
         if "name" in options:
-            options["name"] = ";".join(options["name"])
+            options["name"] = options["name"][0]
         else:
             options["name"] = None
         if "condense" in options:
-            condense = options["condense"][0].strip().lower()
+            condense = options["condense"][0].lower()
             if condense not in ["true", "false"]:
                 compile_error("Condense option must be boolean.")
             options["condense"] = (condense == "true")
@@ -207,7 +244,8 @@ class MC(Section):
 
     def to_tex(self):
         global qcount
-        tex = []
+        initial_qcount = qcount
+        tex = ["\\newpage"]
         if self.options["name"]:
             tex.append("\\section*{{{}}}".format(self.options["name"]))
         twocol = self.options["twocolumn"]
@@ -219,12 +257,14 @@ class MC(Section):
             tex.append("\\renewcommand{\\questionshook}{\\setlength" +
                        "{\\leftmargin}{0.0 in}}")
         in_questions = False
+        solutions = []
         for cont in self.content:
             if type(cont) == MC.MCQuestion:
                 if not in_questions:
                     in_questions = True
                     tex.append("\\begin{questions}")
                     tex.append("\\setcounter{{question}}{{{}}}".format(qcount))
+                solutions.append(cont.get_answer())
                 qcount += 1
             else:
                 if in_questions:
@@ -237,6 +277,18 @@ class MC(Section):
             tex.append("\\end{multicols*}")
             tex.append("\\renewcommand{\\choiceshook}{}")
             tex.append("\\renewcommand{\\questionshook}{}")
+        if self.options["condense"]:
+            tex.append("\\raggedcolumns")
+            tex.append("\\begin{multicols}{5}")
+            tex.append("\\begin{enumerate}")
+            tex.append("\t\\setcounter{{enumi}}{{{}}}".format(initial_qcount))
+            for sol in solutions:
+                tex.append("\t\\item \\choiceblank{{{}}}".format(sol))
+            tex.append("\\end{enumerate}")
+            # spacing needs fixing iff the columns are uneven in length.
+            if len(solutions) % 5 != 0:
+                tex.append("\\fixcolspacing")
+            tex.append("\\end{multicols}")
         return "\n".join(tex)
 
     class MCQuestion:
@@ -276,13 +328,13 @@ class MC(Section):
             return chr(65 + ind)
 
         def to_tex(self):
-            tex = ["\\question {}".format(make_latex_safe(self.question))]
+            tex = ["\\question {}".format(latexify(self.question))]
             tex.append("\t\\begin{choices}")
             for choice in self.choices:
                 correct = choice == self.correct_choice
                 choice_str = "CorrectChoice" if correct else "choice"
                 tex.append("\t\\{} {}".format(choice_str,
-                                              make_latex_safe(choice)))
+                                              latexify(choice)))
             tex.append("\t\\end{choices}")
             return "\n".join(tex)
 
@@ -300,7 +352,7 @@ class FRQ(Section):
     def format_options(self):
         options = self.options
         if "name" in options:
-            options["name"] = ";".join(options["name"])
+            options["name"] = options["name"][0]
         else:
             options["name"] = None
 
@@ -316,7 +368,7 @@ class FRQ(Section):
 
     def to_tex(self):
         global qcount
-        tex = []
+        tex = ["\\newpage"]
         if self.options["name"]:
             tex.append("\\section*{{{}}}".format(self.options["name"]))
         in_questions = False
@@ -357,10 +409,10 @@ class FRQ(Section):
                 # solution height
                 match = re.match(r"{\s*[\d\.]+\s*}", line)
                 if match:
-                    self.ans_height = int(float(match.group(0)[1:-1])*16)
+                    self.ans_height = int(float(match.group(0)[1:-1])*18)
                     line = line[match.end():]
                 else:
-                    self.ans_height = 16*math.ceil(len(line)/75)
+                    self.ans_height = 18*math.ceil(len(line)/75)
                 self.answer = line.strip()
             else:
                 while lines:
@@ -389,7 +441,7 @@ class FRQ(Section):
             indent = "\t" * self.level
             qlabel = FRQ.FRQuestion.partlabels[self.level]
             tex = ["{}\\{}{} {}".format(indent, qlabel, self.point_val,
-                   make_latex_safe(self.question))]
+                   latexify(self.question))]
             if self.content:
                 if self.level+1 >= len(FRQ.FRQuestion.partlabels):
                     compile_error("FRQ too nested (subsubsubparts not \
@@ -402,8 +454,11 @@ class FRQ(Section):
                 tex.append("{}\\end{{{}}}".format(indent1, qlabel1))
             elif not exam.meta["answer sheet"]:
                 indent1 = "\t" * (self.level+1)
-                tex.append("{}\\vspace{{{}pt}}".format(
-                    indent1, self.ans_height))
+                tex.append(indent1 + "\\par")
+                tex.append("{}\\begin{{solution}}[{}pt]"
+                           .format(indent1, self.ans_height))
+                tex.append(indent1 + latexify(self.answer))
+                tex.append(indent1 + "\\end{solution}")
             return "\n".join(tex)
 
 
@@ -433,7 +488,10 @@ class Image(Module):
     def format_options(self):
         options = self.options
         if "width" in options:
-            options["width"] = options["width"][0]
+            width = options["width"][0]
+            if width[-1] == "%":
+                width = ".{}\\textwidth".format(width[:-1])
+            options["width"] = width
         else:
             options["width"] = "\\textwidth"
 
@@ -454,7 +512,7 @@ class Text(Module):
     def to_tex(self):
         tex = ["\\par\\noindent"]
         for l in self.lines:
-            tex.append(make_latex_safe(l.strip()))
+            tex.append(latexify(l.strip()))
             tex.append("\\par")
         tex = tex[:-1]
         return "\n".join(tex)
@@ -466,7 +524,8 @@ class Latex(Module):
         Module.__init__(self, lines)
 
     def to_tex(self):
-        return "\n".join(self.lines)
+        lines = FRQ.FRQuestion.unindent(self.lines)
+        return "".join(lines)
 
 
 class Bang:
@@ -534,7 +593,7 @@ class Exam:
             header = self.meta["header"]
             if len(header) != 3:
                 compile_error("Header must have three parts.", header)
-            l, c, r = map(make_latex_safe, header)
+            l, c, r = map(latexify, header)
             c = c + (" - Page \\thepage" if c != "" else "")
             r = r + (":\\kern .5 in" if r != "" else "")
             header_tex = "\\header{{{}}}{{{}}}{{{}}}\n".format(l, c, r)
