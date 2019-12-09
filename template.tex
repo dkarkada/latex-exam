@@ -6,12 +6,14 @@
 \usepackage{siunitx}
 \usepackage{graphicx}
 \usepackage{multicol}
-
 \usepackage{etoolbox}
 \usepackage{intcalc}
 \usepackage{framed}
 \usepackage{tabu}
 \usepackage{tabularx}
+\usepackage{xcolor}
+
+\DeclareSIUnit \parsec {pc}
 \newcommand{\match}[2]{
 	\begin{tabularx}{\textwidth}{r X}
 		\fillin[#1][0.5 in] & #2
@@ -31,9 +33,9 @@
 	{\end{tabu} \end{framed} \end{center}
 }
 \setlength\answerclearance{3 pt}
+\newcommand{\remind}{\textcolor{red}{\rule{8pt}{8pt}}}
 
 % answerkey
-\usepackage{xcolor}
 \newcommand{\choiceblank}[1]{
 	\ifprintanswers \underline{\ \ #1\ \ }
 	\else \underline{\hspace{0.40 in}}
