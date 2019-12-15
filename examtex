@@ -54,8 +54,13 @@ handle(os.system(cmd))
 
 if args["p"]:
     with cd(filedir):
-        handle(os.system("latexmk -pdf -quiet " + filebase + "-EXAM.tex"))
-        handle(os.system("latexmk -pdf -quiet " + filebase + "-KEY.tex"))
+        tex_files = [filebase + "-EXAM.tex",
+                     filebase + "-KEY.tex",
+                     filebase + "-ANS_SHEET.tex",
+                     filebase + "-IMG_SHEET.tex"]
+        for tex_file in tex_files:
+            if tex_file in os.listdir():
+                handle(os.system("latexmk -pdf -quiet " + tex_file))
         if args["c"]:
             handle(os.system("latexmk -c"))
         handle(os.system("evince " + filebase + "-EXAM.pdf"))

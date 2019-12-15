@@ -703,12 +703,9 @@ class Exam:
         else:
             meta["answer sheet"] = False
         if "image sheet" in meta:
-            sheet = meta["image sheet"][0].lower()
-            if sheet not in ["true", "false"]:
-                compile_error("Image sheet option must be boolean.")
-            meta["image sheet"] = (sheet == "true")
+            meta["image sheet"] = meta["image sheet"][0]
         else:
-            meta["image sheet"] = False
+            meta["image sheet"] = None
 
     def meta_tex(self):
         tex = [template]
@@ -735,8 +732,6 @@ class Exam:
         return "\n".join(tex)
 
     def ans_sheet_tex(self):
-        if not self.meta["answer sheet"]:
-            return None
         tex = [self.meta_tex()]
         tex.append("\n\\begin{document}")
         tex.append("\\section*{Answer Sheet}")
@@ -748,13 +743,15 @@ class Exam:
         tex.append("\\end{document}\n")
         return "\n".join(tex)
 
-    def ans_key_tex(self):
-        if self.meta["answer sheet"]:
-            tex = self.to_tex()
-        else:
-            tex = self.ans_sheet_tex()
-        tex = re.sub("%\\printanswers", "\\printanswers", tex)
-        return tex
+    def image_sheet_tex(self):
+        fp = self.meta["image sheet"]
+        tex = [self.meta_tex()]
+        tex.append("\n\\begin{document}")
+        tex.append("\\section*{Image Sheet}")
+        tex.append("\\includegraphics[height=.96\\textheight]{{{}}}"
+                   .format(fp))
+        tex.append("\\end{document}\n")
+        return "\n".join(tex)
 
 
 def main():
@@ -791,6 +788,10 @@ def main():
     key_tex = re.sub(r"%\\printanswers", r"\\printanswers", key_tex)
     with open(filename+"-KEY.tex", 'w+') as fileout:
         fileout.write(key_tex)
+    if exam.meta["image sheet"]:
+        img_tex = exam.image_sheet_tex()
+        with open(filename+"-IMG_SHEET.tex", 'w+') as fileout:
+            fileout.write(img_tex)
 
 
 qcount = 0
