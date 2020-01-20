@@ -36,7 +36,7 @@
 		"module": {
 			"patterns": [
 				{
-					"match": "(?i)^{(image|text|latex|table)}",
+					"match": "(?i)^\\s*{(image|text|latex|table)}",
 					"name": "entity.name.section.exam"
 				}
 			]
@@ -78,7 +78,7 @@
 		},
 		"numtag": {
 			"name": "string.exam",
-			"match": "\\s*{\\d*\\.?\\d+[^}]*}"
+			"match": "\\s*{\\d*\\.?\\d+}"
 		},
 		"correct-ans-tag": {
 			"name": "string.exam",

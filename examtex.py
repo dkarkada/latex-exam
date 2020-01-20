@@ -62,6 +62,12 @@ class Section:
             self.lines = lines
         self.content = []
 
+        options = self.options
+        if "name" in options:
+            options["name"] = options["name"][0]
+        else:
+            options["name"] = None
+
     def gobble(lines):
         module_ptrn = r"(?i){(image|text|latex)}\s*$"
         bang_ptrn = r"(?i)\s*!(newpage|gap|newcol|hrule)"
@@ -157,20 +163,7 @@ class Cover(Section):
         return "\n".join(tex)
 
 
-class Match(Section):
-
-    def __init__(self, lines):
-        Section.__init__(self, lines)
-        lines = self.lines
-        wordbank = set()
-        while lines:
-            cont, lines = Match.gobble(lines)
-            self.content.append(cont)
-            if type(cont) == tuple:
-                wordbank.add(cont[1])
-        self.wordbank = sorted(list(wordbank))
-        if len(self.wordbank) > 26:
-            compile_error("Too many choices in word bank.")
+class MatchTF(Section):
 
     def gobble(lines):
         cont, lines = Section.gobble(lines)
@@ -190,9 +183,10 @@ class Match(Section):
         if self.options["name"]:
             tex.append("\\section*{{{}}}".format(self.options["name"]))
         tex.append("\\begin{wordbank}{3}")
-        for ans in self.wordbank:
-            tex.append("\t\\wbelem{{{}}}".format(ans))
-        tex.append("\\end{wordbank}")
+        if self.wordbank:
+            for ans in self.wordbank:
+                tex.append("\t\\wbelem{{{}}}".format(ans))
+            tex.append("\\end{wordbank}")
         in_questions = False
         for cont in self.content:
             if type(cont) == tuple:
@@ -201,7 +195,10 @@ class Match(Section):
                     tex.append("\\begin{questions}")
                     tex.append("\\setcounter{{question}}{{{}}}".format(qcount))
                 q, a = cont
-                a = chr(65 + self.wordbank.index(a))
+                if self.wordbank:
+                    a = chr(65 + self.wordbank.index(a))
+                else:
+                    a = 'T' if a.lower() in ["t", "true"] else 'F'
                 tex.append("\\question\\match{{{}}}{{{}}}".format(a, q))
                 qcount += 1
             else:
@@ -220,7 +217,10 @@ class Match(Section):
         for cont in self.content:
             if type(cont) == tuple:
                 q, a = cont
-                a = chr(65 + self.wordbank.index(a))
+                if self.wordbank:
+                    a = chr(65 + self.wordbank.index(a))
+                else:
+                    a = 'T' if a.lower() in ["t", "true"] else 'F'
                 solutions.append(a)
         tex.append("\\raggedcolumns")
         tex.append("\\begin{multicols}{5}")
@@ -237,26 +237,31 @@ class Match(Section):
         return "\n".join(tex)
 
 
-class TF(Section):
+class Match(MatchTF):
 
     def __init__(self, lines):
         Section.__init__(self, lines)
         lines = self.lines
+        wordbank = set()
         while lines:
-            cont, lines = Match.gobble(lines)
+            cont, lines = MatchTF.gobble(lines)
             self.content.append(cont)
-
-    def to_tex(self):
-        for cont in self.content:
             if type(cont) == tuple:
-                q, a = cont
-                pass
-            else:
-                pass
-        return ""
+                wordbank.add(cont[1])
+        self.wordbank = sorted(list(wordbank))
+        if len(self.wordbank) > 26:
+            compile_error("Too many choices in word bank.")
 
-    def ans_sheet_tex(self):
-        return ""
+
+class TF(MatchTF):
+
+    def __init__(self, lines):
+        Section.__init__(self, lines)
+        self.wordbank = None
+        lines = self.lines
+        while lines:
+            cont, lines = MatchTF.gobble(lines)
+            self.content.append(cont)
 
 
 class MC(Section):
@@ -278,10 +283,6 @@ class MC(Section):
             options["twocolumn"] = (twocol == "true")
         else:
             options["twocolumn"] = False
-        if "name" in options:
-            options["name"] = options["name"][0]
-        else:
-            options["name"] = None
         if "condense" in options:
             condense = options["condense"][0].lower()
             if condense not in ["true", "false"]:
@@ -414,18 +415,10 @@ class FRQ(Section):
 
     def __init__(self, lines):
         Section.__init__(self, lines)
-        self.format_options()
         lines = self.lines
         while lines:
             cont, lines = FRQ.gobble(lines)
             self.content.append(cont)
-
-    def format_options(self):
-        options = self.options
-        if "name" in options:
-            options["name"] = options["name"][0]
-        else:
-            options["name"] = None
 
     def gobble(lines):
         cont, lines = Section.gobble(lines)
@@ -479,7 +472,7 @@ class FRQ(Section):
             self.level = level
             self.point_val = ""
             question = lines[0].strip()
-            match = re.match(r"{\s*[\d\.]+\s*}", question)
+            match = re.match(r"{\d*\.?\d+}", question)
             if match:
                 self.point_val = "[{}]".format(match.group(0)[1:-1])
                 question = question[match.end():].strip()
@@ -490,7 +483,7 @@ class FRQ(Section):
             if len(lines) == 1 and re.match(r"\s*//", lines[0]):
                 line = lines[0].strip()[2:].strip()
                 # solution height
-                match = re.match(r"{\s*[\d\.]+\s*}", line)
+                match = re.match(r"{\d*\.?\d+}", line)
                 if match:
                     self.ans_height = int(float(match.group(0)[1:-1])*18)
                     line = line[match.end():]
@@ -512,6 +505,9 @@ class FRQ(Section):
             return unindented
 
         def gobble(lines, level):
+            cont, lines = Section.gobble(lines)
+            if cont:
+                return cont, lines
             if re.match(r"\s", lines[0]):
                 compile_error("Question overindented.", lines[0])
             end = 1
@@ -600,7 +596,7 @@ class Image(Module):
         if "width" in options:
             width = options["width"][0]
             if width[-1] == "%":
-                width = ".{}\\textwidth".format(width[:-1])
+                width = "{}\\textwidth".format(float(width[:-1])/100)
             options["width"] = width
         else:
             options["width"] = "\\textwidth"
