@@ -1,0 +1,89 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Exam",
+	"patterns": [
+		{
+			"include": "#section"
+		},
+		{
+			"include": "#module"
+		},
+		{
+			"include": "#math"
+		},
+		{
+			"include": "#comment"
+		},
+		{
+			"include": "#bang"
+		},
+		{
+			"include": "#numtag"
+		},
+		{
+			"include": "#correct-ans-tag"
+		}
+	],
+	"repository": {
+		"section": {
+			"patterns": [
+				{
+					"match": "(?i)^\\[(meta|cover|match|tf|mc|frq)\\]",
+					"name": "markup.bold.exam"
+				}
+			]
+		},
+		"module": {
+			"patterns": [
+				{
+					"match": "(?i)^\\s*{(image|text|latex|table)}",
+					"name": "entity.name.section.exam"
+				}
+			]
+		},
+		"math": {
+			"patterns": [
+				{
+					"begin": "((?<!\\\\)\\$)|(\\\\\\[)",
+					"end": "((?<!\\\\)\\$)|(\\\\])",
+					"name": "markup.italic.exam"
+				}
+			]
+		},
+		"comment": {
+			"patterns": [
+				{
+					"begin": "//",
+					"end": "$",
+					"name": "comment.line.exam",
+					"patterns": [
+						{
+							"include": "#math"
+						},
+						{
+							"include": "#numtag"
+						}
+					]
+				}
+			]
+		},
+		"bang": {
+			"patterns": [
+				{
+					"begin": "!(newpage|gap|newcol|hrule)",
+					"end": "$",
+					"name": "variable.function.exam"
+				}
+			]
+		},
+		"numtag": {
+			"name": "string.exam",
+			"match": "\\s*{\\d*\\.?\\d+}"
+		},
+		"correct-ans-tag": {
+			"name": "string.exam",
+			"match": "{C}\\s*$"
+		}
+	},
+	"scopeName": "text.exam"
+}

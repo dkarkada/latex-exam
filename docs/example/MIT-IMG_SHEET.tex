@@ -1,0 +1,62 @@
+% preamble
+\documentclass{exam}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{etoolbox}
+\usepackage{intcalc}
+\usepackage{framed}
+\usepackage{tabu}
+\usepackage{tabularx}
+\usepackage[dvipsnames]{xcolor}
+
+\DeclareSIUnit \parsec {pc}
+\newcommand{\match}[2]{
+	\begin{tabularx}{\textwidth}{r X}
+		\fillin[#1][0.5 in] & #2
+	\end{tabularx}}
+\newcounter{wbcount}
+\newcommand{\wbelem}[1]{\stepcounter{wbcount}
+	\textbf{\Alph{wbcount}} & {#1}
+	\ifnumequal{0}{\intcalcMod{\value{wbcount}}{\wbcolsize}}
+		{\\}
+		{&}
+}
+\newenvironment{wordbank}[1]{
+	\renewcommand*{\arraystretch}{1.5} \def\wbcolsize{#1}
+	\begin{center} \begin{framed}
+	\begin{tabu} to \textwidth {*{#1}{X[1,l] X[5,l]}}
+	}
+	{\end{tabu} \end{framed} \end{center}
+}
+\setlength\answerclearance{3 pt}
+\newcommand{\remind}{\textcolor{red}{\rule{8pt}{8pt}}}
+\newcommand{\bigO}{\mathcal{O}}
+
+% answerkey
+\newcommand{\choiceblank}[1]{
+	\ifprintanswers \underline{\ \ #1\ \ }
+	\else \underline{\hspace{0.40 in}}
+	\fi
+	\vspace{0.05 in}
+}
+\newcommand{\fixcolspacing}{\vspace{0pt plus 1filll}\mbox{}}
+\renewcommand{\solutiontitle}{}
+\unframedsolutions
+\SolutionEmphasis{\color{RubineRed}}
+\CorrectChoiceEmphasis{\color{RubineRed}}
+
+%\printanswers
+\pagestyle{head}
+\header{MIT Invitational}{Astronomy C - Page \thepage}{Team Number:\kern .5 in}
+\headrule
+
+\begin{document}
+\section*{Image Sheet}
+\includegraphics[height=.96\textheight]{images/image_sheet.png}
+\end{document}

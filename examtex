@@ -63,4 +63,4 @@ if args["p"]:
                 handle(os.system("latexmk -pdf -quiet " + tex_file))
         if args["c"]:
             handle(os.system("latexmk -c"))
-        handle(os.system("evince " + filebase + "-EXAM.pdf"))
+        # handle(os.system("evince " + filebase + "-EXAM.pdf"))

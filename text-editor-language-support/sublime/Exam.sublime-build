@@ -1,5 +1,0 @@
-{
-	"cmd": ["examtex", "-c", "$file"],
-	"selector": "text.exam",
-	"file_patterns": ["*.exam"]
-}

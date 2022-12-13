@@ -381,19 +381,6 @@ class MC(Section):
                 # randomize choices
                 random.shuffle(self.choices)
 
-        def to_tex(self):
-            """Generates tex for MC question"""
-            tex_str = ""
-            tex_str += "\t\\question {}\n".format(self.question)
-            tex_str += "\t\\begin{choices}\n"
-            for choice in self.choices:
-                if choice == self.correct_choice:
-                    tex_str += "\t\t\\CorrectChoice {}\n".format(choice)
-                else:
-                    tex_str += "\t\t\\choice {}\n".format(choice)
-            tex_str += "\t\\end{choices}\n"
-            return tex_str
-
         def get_answer(self):
             """Returns capital-letter character of correct answer choice."""
             ind = self.choices.index(self.correct_choice)

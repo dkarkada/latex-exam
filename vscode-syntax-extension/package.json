@@ -1,0 +1,36 @@
+{
+    "name": "exam",
+    "publisher": "dkarkada",
+    "repository": "https://github.com/dkarkada/latex-exam/tree/master/text-editor-language-support/vscode/exam",
+    "displayName": "exam",
+    "description": "Syntax highlighting for .exam file formats.",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.29.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "exam",
+                "aliases": [
+                    "Exam",
+                    "exam"
+                ],
+                "extensions": [
+                    ".exam"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "exam",
+                "scopeName": "text.exam",
+                "path": "./syntaxes/exam.tmLanguage.json"
+            }
+        ]
+    }
+}
